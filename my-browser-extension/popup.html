@@ -1,0 +1,272 @@
+<!-- whatsapp-odoo-poc/popup.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 350px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      color: #333;
+    }
+    
+    .header p {
+      margin: 5px 0 0 0;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+      font-size: 13px;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="url"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #25D366;
+      box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.1);
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .btn-primary {
+      background: #25D366;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #1ea952;
+    }
+    
+    .btn-secondary {
+      background: #f8f9fa;
+      color: #333;
+      border: 1px solid #dee2e6;
+    }
+    
+    .btn-secondary:hover {
+      background: #e9ecef;
+    }
+    
+    .status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      text-align: center;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .status.info {
+      background: #cce7ff;
+      color: #004085;
+      border: 1px solid #99d1ff;
+    }
+    
+    .help-text {
+      font-size: 11px;
+      color: #666;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+    }
+    
+    .loading.show {
+      display: block;
+    }
+    
+    .spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #25D366;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .instructions {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    
+    .instructions h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #333;
+    }
+    
+    .instructions ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    .instructions li {
+      margin-bottom: 5px;
+    }
+
+    .api-key-info {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 12px;
+    }
+
+    .api-key-info h4 {
+      margin: 0 0 8px 0;
+      color: #0066cc;
+      font-size: 13px;
+    }
+
+    .api-key-info ol {
+      margin: 8px 0 0 16px;
+      padding: 0;
+    }
+
+    .api-key-info li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>WhatsApp to Odoo</h1>
+    <p>POC Configuration</p>
+  </div>
+
+  <form id="configForm">
+    <div class="form-group">
+      <label for="odooUrl">Odoo Server URL</label>
+      <input type="url" id="odooUrl" placeholder="https://yourcompany.odoo.com" required>
+      <div class="help-text">Your Odoo server URL (include https://)</div>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="email" id="username" placeholder="info@belgogreen.be" required>
+      <div class="help-text">Your Odoo login username (usually email address)</div>
+    </div>
+
+    <div class="form-group">
+      <label for="apiKey">API Key</label>
+      <input type="password" id="apiKey" placeholder="Your Odoo API Key" required>
+      <div class="help-text">Generated from Odoo → Preferences → Account Security</div>
+    </div>
+
+    <div class="button-group">
+      <button type="button" id="testBtn" class="btn-secondary">Test Connection</button>
+      <button type="submit" id="saveBtn" class="btn-primary">Save Config</button>
+    </div>
+  </form>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>Testing connection...</span>
+  </div>
+
+  <div id="status" class="status" style="display: none;"></div>
+
+  <div class="api-key-info">
+    <h4>How to Get Your API Key:</h4>
+    <ol>
+      <li>Log into your Odoo instance</li>
+      <li>Go to <strong>Preferences</strong> (your profile)</li>
+      <li>Click <strong>Account Security</strong> tab</li>
+      <li>Click <strong>New API Key</strong></li>
+      <li>Enter description: "WhatsApp Integration"</li>
+      <li>Copy the generated key and paste above</li>
+    </ol>
+  </div>
+
+  <div class="instructions">
+    <h3>How to Use:</h3>
+    <ol>
+      <li>Enter your Odoo URL and username</li>
+      <li>Get your API key from Odoo (see above)</li>
+      <li>Test the connection</li>
+      <li>Go to WhatsApp Web in a new tab</li>
+      <li>Open any conversation</li>
+      <li>Click the "📋 Create Ticket" button</li>
+      <li>Check your Odoo helpdesk for the new ticket</li>
+    </ol>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
