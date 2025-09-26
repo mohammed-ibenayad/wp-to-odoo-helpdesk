@@ -1,4 +1,4 @@
-// Enhanced content.js with one-click message ticket creation
+// Enhanced content.js with one-click message ticket creation and custom title selection
 class WhatsAppMessageTracker {
   constructor() {
     console.log('WhatsApp One-Click Ticket Creator Initialized');
@@ -26,6 +26,151 @@ class WhatsAppMessageTracker {
         display: none !important;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(0,0,0,0.1);
+      }
+      
+      .odoo-title-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+      }
+      
+      .odoo-title-modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease-out;
+      }
+      
+      @keyframes modalSlideIn {
+        0% { 
+          opacity: 0; 
+          transform: scale(0.9) translateY(-20px); 
+        }
+        100% { 
+          opacity: 1; 
+          transform: scale(1) translateY(0); 
+        }
+      }
+      
+      .odoo-title-modal h3 {
+        margin: 0 0 16px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        text-align: center;
+      }
+      
+      .odoo-title-modal-message {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+        border-left: 4px solid #25D366;
+        font-size: 14px;
+        color: #555;
+        max-height: 100px;
+        overflow-y: auto;
+      }
+      
+      .odoo-title-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        box-sizing: border-box;
+        margin-bottom: 16px;
+        transition: border-color 0.2s ease;
+      }
+      
+      .odoo-title-input:focus {
+        outline: none;
+        border-color: #25D366;
+        box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+      }
+      
+      .odoo-title-options {
+        margin-bottom: 20px;
+      }
+      
+      .odoo-title-option {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+      }
+      
+      .odoo-title-option:hover {
+        background: #f8f9fa;
+      }
+      
+      .odoo-title-option input[type="radio"] {
+        margin-right: 10px;
+        cursor: pointer;
+      }
+      
+      .odoo-title-option label {
+        cursor: pointer;
+        font-size: 14px;
+        color: #333;
+        flex: 1;
+      }
+      
+      .odoo-title-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      
+      .odoo-title-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .odoo-title-btn.primary {
+        background: #25D366;
+        color: white;
+      }
+      
+      .odoo-title-btn.primary:hover {
+        background: #1ea952;
+        transform: translateY(-1px);
+      }
+      
+      .odoo-title-btn.secondary {
+        background: #f8f9fa;
+        color: #666;
+        border: 1px solid #e0e0e0;
+      }
+      
+      .odoo-title-btn.secondary:hover {
+        background: #e9ecef;
+      }
+      
+      .odoo-title-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
       }
       
       .odoo-action-btn {
@@ -363,12 +508,23 @@ class WhatsAppMessageTracker {
 
   async createFromMessage(messageElement, type) {
     const button = messageElement.querySelector(`.odoo-action-btn.${type}`);
-    button.classList.add('creating');
     
     try {
       // Extract message data
       const messageData = this.extractMessageData(messageElement);
       const conversationData = this.extractConversationData();
+      
+      // Show title selection modal for tickets
+      if (type === 'ticket') {
+        const titleData = await this.showTitleModal(messageData, conversationData);
+        if (!titleData) {
+          return; // User cancelled
+        }
+        messageData.customTitle = titleData.title;
+        messageData.titleOption = titleData.option;
+      }
+      
+      button.classList.add('creating');
       
       // Get Odoo config
       const config = await this.getOdooConfig();
@@ -493,10 +649,18 @@ class WhatsAppMessageTracker {
   }
 
   async createTicket(messageData, conversationData, config) {
+    // Use custom title if provided, otherwise use default logic
+    let ticketTitle;
+    if (messageData.customTitle) {
+      ticketTitle = messageData.customTitle;
+    } else {
+      ticketTitle = `WhatsApp: ${messageData.content.substring(0, 50)}...`;
+    }
+
     const ticketData = {
       contactName: conversationData.contactName,
       contactNumber: conversationData.contactNumber,
-      summary: `WhatsApp: ${messageData.content.substring(0, 50)}...`,
+      summary: ticketTitle,
       description: `Original message: "${messageData.content}"\n\nSent at: ${messageData.timestamp}\nFrom: ${conversationData.contactName}`,
       messages: [{
         content: messageData.content,
@@ -576,6 +740,160 @@ class WhatsAppMessageTracker {
       return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Next week
     }
     return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days default
+  }
+
+  async showTitleModal(messageData, conversationData) {
+    return new Promise((resolve) => {
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.className = 'odoo-title-modal';
+      
+      // Create modal content
+      const modalContent = document.createElement('div');
+      modalContent.className = 'odoo-title-modal-content';
+      
+      // Truncate message for display
+      const displayMessage = messageData.content.length > 100 
+        ? messageData.content.substring(0, 100) + '...' 
+        : messageData.content;
+      
+      // Generate title options
+      const messageStart = messageData.content.substring(0, 30);
+      const contactName = conversationData.contactName || 'Unknown Contact';
+      
+      modalContent.innerHTML = `
+        <h3>Create Ticket Title</h3>
+        
+        <div class="odoo-title-modal-message">
+          <strong>Message:</strong> "${displayMessage}"
+        </div>
+        
+        <div class="odoo-title-options">
+          <div class="odoo-title-option">
+            <input type="radio" id="title-option-1" name="titleOption" value="custom" checked>
+            <label for="title-option-1">Write custom title</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="title-option-2" name="titleOption" value="message-start">
+            <label for="title-option-2">Use message start: "${messageStart}..."</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="title-option-3" name="titleOption" value="contact-based">
+            <label for="title-option-3">Contact-based: "Support request from ${contactName}"</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="title-option-4" name="titleOption" value="auto">
+            <label for="title-option-4">Auto-generate: "WhatsApp: ${messageStart}..."</label>
+          </div>
+        </div>
+        
+        <input type="text" 
+               class="odoo-title-input" 
+               placeholder="Enter custom ticket title..." 
+               maxlength="100"
+               value="">
+        
+        <div class="odoo-title-buttons">
+          <button class="odoo-title-btn secondary" data-action="cancel">Cancel</button>
+          <button class="odoo-title-btn primary" data-action="create">Create Ticket</button>
+        </div>
+      `;
+      
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      // Get elements
+      const titleInput = modalContent.querySelector('.odoo-title-input');
+      const radioButtons = modalContent.querySelectorAll('input[name="titleOption"]');
+      const createBtn = modalContent.querySelector('[data-action="create"]');
+      const cancelBtn = modalContent.querySelector('[data-action="cancel"]');
+      
+      // Update input based on radio selection
+      const updateTitleInput = () => {
+        const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
+        
+        switch (selectedOption) {
+          case 'custom':
+            titleInput.value = '';
+            titleInput.disabled = false;
+            titleInput.focus();
+            break;
+          case 'message-start':
+            titleInput.value = `${messageStart}...`;
+            titleInput.disabled = true;
+            break;
+          case 'contact-based':
+            titleInput.value = `Support request from ${contactName}`;
+            titleInput.disabled = true;
+            break;
+          case 'auto':
+            titleInput.value = `WhatsApp: ${messageStart}...`;
+            titleInput.disabled = true;
+            break;
+        }
+      };
+      
+      // Initial setup
+      updateTitleInput();
+      
+      // Event listeners
+      radioButtons.forEach(radio => {
+        radio.addEventListener('change', updateTitleInput);
+      });
+      
+      // Validate and enable/disable create button
+      const validateTitle = () => {
+        const title = titleInput.value.trim();
+        createBtn.disabled = !title || title.length < 3;
+      };
+      
+      titleInput.addEventListener('input', validateTitle);
+      radioButtons.forEach(radio => {
+        radio.addEventListener('change', validateTitle);
+      });
+      
+      // Initial validation
+      validateTitle();
+      
+      // Button handlers
+      createBtn.addEventListener('click', () => {
+        const title = titleInput.value.trim();
+        const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
+        
+        if (title && title.length >= 3) {
+          modal.remove();
+          resolve({
+            title: title,
+            option: selectedOption
+          });
+        }
+      });
+      
+      cancelBtn.addEventListener('click', () => {
+        modal.remove();
+        resolve(null);
+      });
+      
+      // Close on backdrop click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+          resolve(null);
+        }
+      });
+      
+      // Keyboard shortcuts
+      document.addEventListener('keydown', function escapeHandler(e) {
+        if (e.key === 'Escape') {
+          modal.remove();
+          document.removeEventListener('keydown', escapeHandler);
+          resolve(null);
+        } else if (e.key === 'Enter' && e.ctrlKey) {
+          createBtn.click();
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      });
+    });
   }
 
   showSuccess(button, type, result) {

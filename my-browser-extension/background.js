@@ -126,13 +126,16 @@ class OdooAPIClient {
     try {
       const partnerId = await this.findOrCreatePartner(conversationData);
       
-      const ticketData = {
-        name: `WhatsApp: ${conversationData.contactName}`,
-        description: conversationData.summary || conversationData.description,
-        partner_id: partnerId,
-        priority: '1',
-        stage_id: 1,
-      };
+      // Use the summary as the ticket title (name field in Odoo)
+const ticketTitle = conversationData.summary || `WhatsApp: ${conversationData.contactName}`;
+
+const ticketData = {
+  name: ticketTitle,  // This is the ticket title in Odoo
+  description: conversationData.description,  // This is the description field
+  partner_id: partnerId,
+  priority: '1',
+  stage_id: 1,
+};
       
       const createTicketCall = {
         method: 'execute_kw',
