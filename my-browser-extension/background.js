@@ -1,5 +1,5 @@
-// whatsapp-odoo-poc/background.js
-// Service Worker with Smart Authentication
+// Enhanced background.js with Task and Lead creation
+// This is the complete working background script
 
 class OdooAPIClient {
   constructor(config) {
@@ -61,95 +61,7 @@ class OdooAPIClient {
       return false;
     }
   }
-  
-  async tryMultipleAuthentications(primaryDbName) {
-    const loginUrl = `${this.url}/xmlrpc/2/common`;
-    
-    // Generate possible username/database combinations
-    const combinations = this.generateAuthCombinations(primaryDbName);
-    this.log(`Trying ${combinations.length} authentication combinations...`);
-    
-    const attempts = [];
-    
-    for (const combo of combinations) {
-      this.log(`Trying: ${combo.username}@${combo.database}`);
-      
-      const loginData = {
-        method: 'authenticate',
-        params: [combo.database, combo.username, this.apiKey, {}]
-      };
-      
-      try {
-        const response = await this.xmlrpcCall(loginUrl, loginData);
-        this.log(`Response for ${combo.username}@${combo.database}:`, response);
-        
-        attempts.push({
-          username: combo.username,
-          database: combo.database,
-          response: response,
-          success: response && response > 0
-        });
-        
-        // If we got a positive user ID, authentication succeeded
-        if (response && response > 0) {
-          return {
-            success: true,
-            uid: response,
-            username: combo.username,
-            database: combo.database,
-            attempts: attempts
-          };
-        }
-        
-      } catch (error) {
-        this.log(`Error for ${combo.username}@${combo.database}:`, error.message);
-        attempts.push({
-          username: combo.username,
-          database: combo.database,
-          error: error.message,
-          success: false
-        });
-      }
-    }
-    
-    return {
-      success: false,
-      attempts: attempts
-    };
-  }
-  
-  generateAuthCombinations(primaryDbName) {
-    // Generate possible database names
-    const possibleDatabases = [
-      primaryDbName, // belgogreen-main-staging-22779376
-      primaryDbName.split('-')[0], // belgogreen
-      'postgres',
-      'odoo',
-      'main',
-      'staging'
-    ];
-    
-    // Generate possible usernames - we need to figure out the actual username
-    // The API key is tied to a specific user, but we don't know which one
-    const possibleUsernames = [
-      'admin',
-      'Administrator',
-      'user',
-      // Add more if you know other possible usernames
-    ];
-    
-    const combinations = [];
-    
-    // Try all combinations
-    for (const db of possibleDatabases) {
-      for (const username of possibleUsernames) {
-        combinations.push({ database: db, username: username });
-      }
-    }
-    
-    return combinations;
-  }
-  
+
   async getDatabaseInfo() {
     const urlParts = new URL(this.url);
     const hostname = urlParts.hostname;
@@ -161,10 +73,8 @@ class OdooAPIClient {
       
       let subdomain;
       if (parts.length >= 3 && parts[parts.length - 3] === 'dev') {
-        // Dev instance: subdomain.dev.odoo.com
         subdomain = parts.slice(0, -3).join('-');
       } else {
-        // Regular instance: subdomain.odoo.com  
         subdomain = parts[0];
       }
       
@@ -176,7 +86,6 @@ class OdooAPIClient {
       };
     }
     
-    // For self-hosted instances
     this.log('Attempting to get database list for self-hosted instance...');
     try {
       const dbListUrl = `${this.url}/xmlrpc/2/db`;
@@ -203,7 +112,7 @@ class OdooAPIClient {
       username: null
     };
   }
-  
+
   async createTicket(conversationData) {
     if (!this.uid) {
       const authenticated = await this.authenticate();
@@ -215,13 +124,11 @@ class OdooAPIClient {
     const objectUrl = `${this.url}/xmlrpc/2/object`;
     
     try {
-      // First, try to find or create the customer
       const partnerId = await this.findOrCreatePartner(conversationData);
       
-      // Create the helpdesk ticket
       const ticketData = {
         name: `WhatsApp: ${conversationData.contactName}`,
-        description: conversationData.summary,
+        description: conversationData.summary || conversationData.description,
         partner_id: partnerId,
         priority: '1',
         stage_id: 1,
@@ -241,8 +148,9 @@ class OdooAPIClient {
       
       const ticketId = await this.xmlrpcCall(objectUrl, createTicketCall);
       
-      // Log the conversation for future reference
-      await this.logConversation(ticketId, conversationData);
+      if (conversationData.messages) {
+        await this.logConversation(ticketId, conversationData);
+      }
       
       return {
         success: true,
@@ -258,7 +166,109 @@ class OdooAPIClient {
       };
     }
   }
-  
+
+  async createTask(taskData) {
+    if (!this.uid) {
+      const authenticated = await this.authenticate();
+      if (!authenticated) {
+        throw new Error('Authentication failed');
+      }
+    }
+    
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    try {
+      const partnerId = await this.findOrCreatePartnerByName(taskData.partner_name);
+      
+      const taskRecord = {
+        name: taskData.name,
+        description: taskData.description,
+        partner_id: partnerId,
+        date_deadline: taskData.date_deadline ? this.formatDate(taskData.date_deadline) : false,
+        priority: taskData.priority || '1',
+        user_id: this.uid,
+        project_id: await this.getDefaultProject()
+      };
+      
+      const createTaskCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'project.task',
+          'create',
+          [taskRecord]
+        ]
+      };
+      
+      const taskId = await this.xmlrpcCall(objectUrl, createTaskCall);
+      
+      return {
+        success: true,
+        taskId: taskId,
+        partnerId: partnerId
+      };
+      
+    } catch (error) {
+      console.error('Error creating task:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async createLead(leadData) {
+    if (!this.uid) {
+      const authenticated = await this.authenticate();
+      if (!authenticated) {
+        throw new Error('Authentication failed');
+      }
+    }
+    
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    try {
+      const leadRecord = {
+        name: leadData.name,
+        contact_name: leadData.contact_name,
+        phone: leadData.phone,
+        description: leadData.description,
+        source_id: await this.getOrCreateSource(leadData.source_id || 'WhatsApp'),
+        priority: leadData.priority || 'medium',
+        user_id: this.uid,
+        team_id: await this.getDefaultSalesTeam()
+      };
+      
+      const createLeadCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'crm.lead',
+          'create',
+          [leadRecord]
+        ]
+      };
+      
+      const leadId = await this.xmlrpcCall(objectUrl, createLeadCall);
+      
+      return {
+        success: true,
+        leadId: leadId
+      };
+      
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   async findOrCreatePartner(conversationData) {
     const objectUrl = `${this.url}/xmlrpc/2/object`;
     
@@ -308,7 +318,185 @@ class OdooAPIClient {
     
     return await this.xmlrpcCall(objectUrl, createPartnerCall);
   }
-  
+
+  async findOrCreatePartnerByName(partnerName) {
+    if (!partnerName) {
+      partnerName = 'WhatsApp Contact';
+    }
+    
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    const searchCall = {
+      method: 'execute_kw',
+      params: [
+        this.database,
+        this.uid,
+        this.apiKey,
+        'res.partner',
+        'search',
+        [['name', '=', partnerName]],
+        { limit: 1 }
+      ]
+    };
+    
+    const existingPartners = await this.xmlrpcCall(objectUrl, searchCall);
+    
+    if (existingPartners && existingPartners.length > 0) {
+      return existingPartners[0];
+    }
+    
+    const partnerData = {
+      name: partnerName,
+      is_company: false,
+      supplier_rank: 0,
+      customer_rank: 1,
+      comment: 'Created from WhatsApp integration'
+    };
+    
+    const createPartnerCall = {
+      method: 'execute_kw',
+      params: [
+        this.database,
+        this.uid,
+        this.apiKey,
+        'res.partner',
+        'create',
+        [partnerData]
+      ]
+    };
+    
+    return await this.xmlrpcCall(objectUrl, createPartnerCall);
+  }
+
+  async getDefaultProject() {
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    try {
+      const searchCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'project.project',
+          'search',
+          [['name', '=', 'WhatsApp Tasks']],
+          { limit: 1 }
+        ]
+      };
+      
+      const existingProjects = await this.xmlrpcCall(objectUrl, searchCall);
+      
+      if (existingProjects && existingProjects.length > 0) {
+        return existingProjects[0];
+      }
+      
+      const projectData = {
+        name: 'WhatsApp Tasks',
+        description: 'Tasks created from WhatsApp messages',
+        privacy_visibility: 'portal'
+      };
+      
+      const createProjectCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'project.project',
+          'create',
+          [projectData]
+        ]
+      };
+      
+      return await this.xmlrpcCall(objectUrl, createProjectCall);
+      
+    } catch (error) {
+      console.error('Error with project setup:', error);
+      return false;
+    }
+  }
+
+  async getDefaultSalesTeam() {
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    try {
+      const searchCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'crm.team',
+          'search',
+          [],
+          { limit: 1 }
+        ]
+      };
+      
+      const teams = await this.xmlrpcCall(objectUrl, searchCall);
+      return teams && teams.length > 0 ? teams[0] : false;
+      
+    } catch (error) {
+      console.error('Error finding sales team:', error);
+      return false;
+    }
+  }
+
+  async getOrCreateSource(sourceName) {
+    const objectUrl = `${this.url}/xmlrpc/2/object`;
+    
+    try {
+      const searchCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'utm.source',
+          'search',
+          [['name', '=', sourceName]],
+          { limit: 1 }
+        ]
+      };
+      
+      const existingSources = await this.xmlrpcCall(objectUrl, searchCall);
+      
+      if (existingSources && existingSources.length > 0) {
+        return existingSources[0];
+      }
+      
+      const sourceData = {
+        name: sourceName
+      };
+      
+      const createSourceCall = {
+        method: 'execute_kw',
+        params: [
+          this.database,
+          this.uid,
+          this.apiKey,
+          'utm.source',
+          'create',
+          [sourceData]
+        ]
+      };
+      
+      return await this.xmlrpcCall(objectUrl, createSourceCall);
+      
+    } catch (error) {
+      console.error('Error with UTM source:', error);
+      return false;
+    }
+  }
+
+  formatDate(date) {
+    if (!(date instanceof Date)) {
+      date = new Date(date);
+    }
+    return date.toISOString().split('T')[0];
+  }
+
   async logConversation(ticketId, conversationData) {
     const objectUrl = `${this.url}/xmlrpc/2/object`;
     
@@ -340,7 +528,7 @@ class OdooAPIClient {
       console.error('Error logging conversation:', error);
     }
   }
-  
+
   formatConversationMessages(messages) {
     let formattedMessages = '<h3>WhatsApp Conversation History</h3>\n';
     
@@ -353,7 +541,7 @@ class OdooAPIClient {
     
     return formattedMessages;
   }
-  
+
   escapeHtml(text) {
     return String(text)
       .replace(/&/g, '&amp;')
@@ -362,7 +550,7 @@ class OdooAPIClient {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
-  
+
   async xmlrpcCall(url, data) {
     const payload = this.buildXMLRPCPayload(data);
     
@@ -386,7 +574,7 @@ class OdooAPIClient {
       throw error;
     }
   }
-  
+
   buildXMLRPCPayload(data) {
     const params = data.params.map(param => this.serializeParam(param)).join('');
     
@@ -398,7 +586,7 @@ class OdooAPIClient {
   </params>
 </methodCall>`;
   }
-  
+
   serializeParam(param) {
     if (typeof param === 'string') {
       return `<param><value><string>${this.escapeXml(param)}</string></value></param>`;
@@ -417,7 +605,7 @@ class OdooAPIClient {
     }
     return `<param><value><string></string></value></param>`;
   }
-  
+
   serializeValue(value) {
     if (typeof value === 'string') {
       return `<string>${this.escapeXml(value)}</string>`;
@@ -436,7 +624,7 @@ class OdooAPIClient {
     }
     return '<string></string>';
   }
-  
+
   escapeXml(text) {
     return String(text)
       .replace(/&/g, '&amp;')
@@ -445,18 +633,16 @@ class OdooAPIClient {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
-  
+
   parseXMLRPCResponse(xmlText) {
-    // Check for fault first
     if (xmlText.includes('<fault>')) {
-      const faultMatch = xmlText.match(/<member><n>faultString<\/name><value><string>(.*?)<\/string><\/value><\/member>/);
+      const faultMatch = xmlText.match(/<member><name>faultString<\/name><value><string>(.*?)<\/string><\/value><\/member>/);
       if (faultMatch) {
         throw new Error(`XML-RPC Fault: ${faultMatch[1]}`);
       }
       throw new Error('XML-RPC Fault occurred');
     }
     
-    // Extract the main response value
     const responseMatch = xmlText.match(/<methodResponse>\s*<params>\s*<param>\s*<value>(.*?)<\/value>\s*<\/param>\s*<\/params>\s*<\/methodResponse>/s);
     if (!responseMatch) {
       throw new Error('Invalid XML-RPC response format');
@@ -464,29 +650,25 @@ class OdooAPIClient {
     
     return this.parseValue(responseMatch[1]);
   }
-  
+
   parseValue(valueContent) {
     valueContent = valueContent.trim();
     
-    // String value
     const stringMatch = valueContent.match(/^<string>(.*?)<\/string>$/s);
     if (stringMatch) {
       return this.unescapeXml(stringMatch[1]);
     }
     
-    // Integer value
     const intMatch = valueContent.match(/^<int>(\d+)<\/int>$/);
     if (intMatch) {
       return parseInt(intMatch[1]);
     }
     
-    // Boolean value
     const boolMatch = valueContent.match(/^<boolean>([01])<\/boolean>$/);
     if (boolMatch) {
       return boolMatch[1] === '1';
     }
     
-    // Array value
     const arrayMatch = valueContent.match(/^<array><data>(.*?)<\/data><\/array>$/s);
     if (arrayMatch) {
       const arrayContent = arrayMatch[1];
@@ -494,11 +676,9 @@ class OdooAPIClient {
       return valueMatches.map(match => this.parseValue(match[1]));
     }
     
-    // Struct value
     const structMatch = valueContent.match(/^<struct>(.*?)<\/struct>$/s);
     if (structMatch) {
       const structContent = structMatch[1];
-      // Handle both <n> and <name> formats
       const memberMatches = [...structContent.matchAll(/<member><(?:n|name)>(.*?)<\/(?:n|name)><value>(.*?)<\/value><\/member>/gs)];
       const obj = {};
       memberMatches.forEach(match => {
@@ -509,10 +689,9 @@ class OdooAPIClient {
       return obj;
     }
     
-    // Raw text
     return this.unescapeXml(valueContent);
   }
-  
+
   unescapeXml(text) {
     return String(text)
       .replace(/&lt;/g, '<')
@@ -525,10 +704,13 @@ class OdooAPIClient {
 
 // Message handlers
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Background received message:', message.action);
+  
   if (message.action === 'createTicket') {
     handleCreateTicket(message.config, message.conversationData)
       .then(sendResponse)
       .catch(error => {
+        console.error('Create ticket error:', error);
         sendResponse({
           success: false,
           error: error.message
@@ -537,14 +719,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   
-  if (message.action === 'openPopup') {
-    chrome.action.openPopup();
+  if (message.action === 'createTask') {
+    handleCreateTask(message.config, message.taskData)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Create task error:', error);
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      });
+    return true;
+  }
+  
+  if (message.action === 'createLead') {
+    handleCreateLead(message.config, message.leadData)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Create lead error:', error);
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      });
+    return true;
   }
   
   if (message.action === 'testConnection') {
     testOdooConnection(message.config)
       .then(sendResponse)
       .catch(error => {
+        console.error('Test connection error:', error);
         sendResponse({
           success: false,
           message: error.message
@@ -554,18 +759,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Handler functions
 async function handleCreateTicket(config, conversationData) {
+  console.log('Handling create ticket with config:', config);
   const odooClient = new OdooAPIClient(config);
   return await odooClient.createTicket(conversationData);
 }
 
+async function handleCreateTask(config, taskData) {
+  console.log('Handling create task with config:', config);
+  const odooClient = new OdooAPIClient(config);
+  return await odooClient.createTask(taskData);
+}
+
+async function handleCreateLead(config, leadData) {
+  console.log('Handling create lead with config:', config);
+  const odooClient = new OdooAPIClient(config);
+  return await odooClient.createLead(leadData);
+}
+
 async function testOdooConnection(config) {
-  console.log('Testing connection with config:', { 
-    url: config.url, 
-    username: config.username, 
-    apiKeyLength: config.apiKey?.length 
-  });
-  
+  console.log('Testing connection with config:', config);
   try {
     const odooClient = new OdooAPIClient(config);
     const authenticated = await odooClient.authenticate();
