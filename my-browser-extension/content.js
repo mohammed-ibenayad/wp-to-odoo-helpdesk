@@ -1,9 +1,41 @@
-// Enhanced content.js with multi-message selection and custom title selection
+// Enhanced content.js with full multi-message selection and custom title selection for all types
 class WhatsAppMessageTracker {
   constructor() {
-    console.log('WhatsApp Multi-Message Ticket Creator Initialized');
-    this.selectedMessages = new Map(); // Changed from Set to Map
+    console.log('WhatsApp Multi-Message Creator Initialized - Full Version');
+    this.selectedMessages = new Map();
     this.selectionMode = false;
+    // Modern SVG icon definitions
+    this.modernIcons = {
+      ticket: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/>
+        <polyline points="8,9 16,9"/>
+        <polyline points="8,13 12,13"/>
+      </svg>`,
+      task: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 11l3 3 8-8"/>
+        <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.51 0 2.93.37 4.18 1.03"/>
+      </svg>`,
+      lead: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>`,
+      multiSelect: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9,11 12,14 22,4"/>
+        <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.51 0 2.93.37 4.18 1.03"/>
+        <rect x="2" y="3" width="6" height="6" rx="1"/>
+        <path d="M4 6l2 2 4-4"/>
+      </svg>`,
+      success: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20,6 9,17 4,12"/>
+      </svg>`,
+      error: `<svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>`
+    };
     this.init();
   }
 
@@ -15,7 +47,32 @@ class WhatsAppMessageTracker {
 
   addCustomStyles() {
     const style = document.createElement('style');
+    const modernSVGStyles = `
+      .odoo-icon-svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      
+      .odoo-action-btn .odoo-icon-svg {
+        width: 20px;
+        height: 20px;
+      }
+      
+      .odoo-selection-btn .odoo-icon-svg {
+        width: 16px;
+        height: 16px;
+        margin-right: 6px;
+      }
+    `;
+
     style.textContent = `
+      ${modernSVGStyles}
       .odoo-message-actions {
         position: absolute;
         right: -50px;
@@ -40,8 +97,8 @@ class WhatsAppMessageTracker {
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         padding: 20px;
         z-index: 10001;
-        min-width: 300px;
-        max-width: 400px;
+        min-width: 350px;
+        max-width: 450px;
         border: 2px solid #25D366;
         display: none;
         animation: slideInRight 0.3s ease-out;
@@ -110,30 +167,56 @@ class WhatsAppMessageTracker {
       }
       
       .odoo-selection-actions {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 8px;
-        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      
+      .odoo-selection-actions .odoo-selection-btn.danger {
+        grid-column: span 3;
+        margin-top: 8px;
       }
       
       .odoo-selection-btn {
-        flex: 1;
-        padding: 8px 12px;
+        padding: 10px 12px;
         border: none;
         border-radius: 6px;
         font-size: 12px;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
-        min-width: 80px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       
-      .odoo-selection-btn.primary {
+      .odoo-selection-btn.ticket {
         background: #25D366;
         color: white;
       }
       
-      .odoo-selection-btn.primary:hover {
+      .odoo-selection-btn.ticket:hover {
         background: #1ea952;
+      }
+      
+      .odoo-selection-btn.task {
+        background: #FF9500;
+        color: white;
+      }
+      
+      .odoo-selection-btn.task:hover {
+        background: #e68600;
+      }
+      
+      .odoo-selection-btn.lead {
+        background: #007AFF;
+        color: white;
+      }
+      
+      .odoo-selection-btn.lead:hover {
+        background: #0056b3;
       }
       
       .odoo-selection-btn.secondary {
@@ -423,7 +506,6 @@ class WhatsAppMessageTracker {
         100% { transform: scale(1); opacity: 1; }
       }
       
-      /* Show buttons on hover of message containers */
       div[role="row"]:hover .odoo-message-actions,
       .copyable-text:hover .odoo-message-actions,
       ._ao3e.selectable-text.copyable-text:hover .odoo-message-actions {
@@ -474,7 +556,6 @@ class WhatsAppMessageTracker {
         opacity: 1;
       }
 
-      /* Subtle debug styles - much less intrusive */
       .odoo-processed {
         position: relative;
       }
@@ -497,7 +578,6 @@ class WhatsAppMessageTracker {
         opacity: 1;
       }
       
-      /* Mobile responsive adjustments */
       @media (max-width: 768px) {
         .odoo-message-actions {
           right: -40px;
@@ -517,9 +597,17 @@ class WhatsAppMessageTracker {
           left: 10px;
           max-width: none;
         }
+        
+        .odoo-selection-actions {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+        
+        .odoo-selection-actions .odoo-selection-btn.danger {
+          grid-column: span 1;
+        }
       }
       
-      /* Success and error states */
       .odoo-action-btn.success {
         background: rgba(76, 175, 80, 0.2) !important;
         color: #4CAF50 !important;
@@ -530,7 +618,6 @@ class WhatsAppMessageTracker {
         color: #F44336 !important;
       }
       
-      /* Notification styles */
       .odoo-notification {
         position: fixed;
         top: 20px;
@@ -588,13 +675,19 @@ class WhatsAppMessageTracker {
       
       <div class="odoo-selection-messages" id="odoo-selected-messages">
         <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
-          Click messages to select them for the ticket
+          Click messages to select them for creation
         </p>
       </div>
       
       <div class="odoo-selection-actions">
-        <button class="odoo-selection-btn primary" id="odoo-create-ticket" disabled>
-          🎫 Create Ticket
+        <button class="odoo-selection-btn ticket" id="odoo-create-ticket" disabled>
+          ${this.modernIcons.ticket} Create Ticket
+        </button>
+        <button class="odoo-selection-btn task" id="odoo-create-task" disabled>
+          ${this.modernIcons.task} Create Task
+        </button>
+        <button class="odoo-selection-btn lead" id="odoo-create-lead" disabled>
+          ${this.modernIcons.lead} Create Lead
         </button>
         <button class="odoo-selection-btn secondary" id="odoo-clear-selection">
           Clear All
@@ -612,6 +705,14 @@ class WhatsAppMessageTracker {
       this.createTicketFromSelection();
     });
     
+    document.getElementById('odoo-create-task').addEventListener('click', () => {
+      this.createTaskFromSelection();
+    });
+    
+    document.getElementById('odoo-create-lead').addEventListener('click', () => {
+      this.createLeadFromSelection();
+    });
+    
     document.getElementById('odoo-clear-selection').addEventListener('click', () => {
       this.clearSelection();
     });
@@ -622,7 +723,6 @@ class WhatsAppMessageTracker {
   }
 
   startMonitoring() {
-    // Monitor for new messages and conversation changes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.addedNodes.length > 0) {
@@ -636,24 +736,20 @@ class WhatsAppMessageTracker {
       subtree: true
     });
 
-    // Initial processing
     setTimeout(() => this.processNewMessages(), 2000);
   }
 
   processNewMessages() {
-    // Look specifically for WhatsApp message containers based on the actual structure
     const messageContainers = document.querySelectorAll('div[role="row"]:not(.odoo-processed)');
     
     let processedCount = 0;
     
     messageContainers.forEach((container) => {
-      // Check if this container actually contains a message
       if (this.isMessageContainer(container)) {
         this.addMessageActions(container);
         container.classList.add('odoo-processed');
         processedCount++;
         
-        // Add selection click handler
         container.addEventListener('click', (e) => {
           if (this.selectionMode) {
             e.stopPropagation();
@@ -667,28 +763,23 @@ class WhatsAppMessageTracker {
   }
 
   isMessageContainer(container) {
-    // Check for the specific message structure we see in WhatsApp
     const hasMessageClass = container.querySelector('.message-in, .message-out');
     const hasCopyableText = container.querySelector('.copyable-text');
     const hasMessageContent = container.querySelector('._ao3e.selectable-text.copyable-text');
     
-    // Must have both message class and copyable text to be a real message
     return hasMessageClass && (hasCopyableText || hasMessageContent);
   }
 
   addMessageActions(messageContainer) {
-    // Skip if already has actions
     if (messageContainer.querySelector('.odoo-message-actions')) return;
 
-    // Determine if this is an incoming message (customer) or outgoing (agent)
     const isOutgoing = messageContainer.querySelector('.message-out');
     const isIncoming = messageContainer.querySelector('.message-in');
     
-    if (!isIncoming && !isOutgoing) return; // Not a valid message
+    if (!isIncoming && !isOutgoing) return;
     
     console.log('Processing message:', isIncoming ? 'INCOMING' : 'OUTGOING');
     
-    // Find the message content area to position buttons relative to it
     const messageContent = messageContainer.querySelector('.copyable-text') || 
                           messageContainer.querySelector('._ao3e.selectable-text.copyable-text');
     
@@ -697,27 +788,24 @@ class WhatsAppMessageTracker {
       return;
     }
 
-    // Create action buttons container
     const actionsContainer = document.createElement('div');
     actionsContainer.className = 'odoo-message-actions';
 
-    // Create single message buttons
-    const ticketBtn = this.createActionButton('🎫', 'Create Ticket', 'ticket', () => {
+    const ticketBtn = this.createActionButton('ticket', 'Create Ticket', 'ticket', () => {
       this.createFromMessage(messageContainer, 'ticket');
     });
 
-    const taskBtn = this.createActionButton('📝', 'Create Task', 'task', () => {
+    const taskBtn = this.createActionButton('task', 'Create Task', 'task', () => {
       this.createFromMessage(messageContainer, 'task');
     });
 
-    const leadBtn = this.createActionButton('💼', 'Create Lead', 'lead', () => {
+    const leadBtn = this.createActionButton('lead', 'Create Lead', 'lead', () => {
       this.createFromMessage(messageContainer, 'lead');
     });
 
-    // Create multi-select button
     const multiSelectBtn = document.createElement('button');
     multiSelectBtn.className = 'odoo-multiselect-btn';
-    multiSelectBtn.innerHTML = '📋 Multi-Select';
+    multiSelectBtn.innerHTML = `${this.modernIcons.multiSelect} Multi-Select`;
     multiSelectBtn.onclick = () => {
       this.enterSelectionMode();
     };
@@ -727,18 +815,21 @@ class WhatsAppMessageTracker {
     actionsContainer.appendChild(leadBtn);
     actionsContainer.appendChild(multiSelectBtn);
 
-    // Position the container relative to the message content
     messageContent.style.position = 'relative';
     messageContent.appendChild(actionsContainer);
     
     console.log('Added action buttons to message');
   }
 
-  createActionButton(icon, tooltip, type, clickHandler) {
+  createActionButton(iconType, tooltip, type, clickHandler) {
     const button = document.createElement('button');
     button.className = `odoo-action-btn ${type}`;
+    
+    // Use the modern SVG icon based on the type
+    const iconSVG = this.modernIcons[iconType];
+    
     button.innerHTML = `
-      ${icon}
+      ${iconSVG}
       <div class="odoo-tooltip">${tooltip}</div>
     `;
     button.onclick = clickHandler;
@@ -749,7 +840,6 @@ class WhatsAppMessageTracker {
     this.selectionMode = true;
     this.selectedMessages.clear();
     
-    // Add visual indicators
     document.body.classList.add('odoo-selection-mode-active');
     document.getElementById('odoo-selection-panel').classList.add('active');
     
@@ -761,11 +851,9 @@ class WhatsAppMessageTracker {
     this.selectionMode = false;
     this.selectedMessages.clear();
     
-    // Remove visual indicators
     document.body.classList.remove('odoo-selection-mode-active');
     document.getElementById('odoo-selection-panel').classList.remove('active');
     
-    // Clear selection visuals
     document.querySelectorAll('.odoo-message-selected').forEach(msg => {
       msg.classList.remove('odoo-message-selected');
     });
@@ -792,7 +880,6 @@ class WhatsAppMessageTracker {
   }
 
   getMessageId(messageContainer) {
-    // Create a unique ID for the message based on its content and position
     const messageText = this.extractMessageData(messageContainer).content;
     const timestamp = this.extractMessageData(messageContainer).timestamp;
     return btoa(messageText.substring(0, 50) + timestamp.getTime()).replace(/[^a-zA-Z0-9]/g, '');
@@ -810,15 +897,19 @@ class WhatsAppMessageTracker {
     const count = this.selectedMessages.size;
     const countElement = document.querySelector('.odoo-selection-count');
     const messagesContainer = document.getElementById('odoo-selected-messages');
-    const createBtn = document.getElementById('odoo-create-ticket');
+    const createTicketBtn = document.getElementById('odoo-create-ticket');
+    const createTaskBtn = document.getElementById('odoo-create-task');
+    const createLeadBtn = document.getElementById('odoo-create-lead');
     
     countElement.textContent = count;
-    createBtn.disabled = count === 0;
+    createTicketBtn.disabled = count === 0;
+    createTaskBtn.disabled = count === 0;
+    createLeadBtn.disabled = count === 0;
     
     if (count === 0) {
       messagesContainer.innerHTML = `
         <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
-          Click messages to select them for the ticket
+          Click messages to select them for creation
         </p>
       `;
     } else {
@@ -843,86 +934,133 @@ class WhatsAppMessageTracker {
   }
 
   async createTicketFromSelection() {
+    return this.createFromSelection('ticket');
+  }
+
+  async createTaskFromSelection() {
+    return this.createFromSelection('task');
+  }
+
+  async createLeadFromSelection() {
+    return this.createFromSelection('lead');
+  }
+
+  async createFromSelection(type) {
     if (this.selectedMessages.size === 0) return;
     
     try {
-      // Get conversation data
       const conversationData = this.extractConversationData();
       
-      // Combine all selected messages
       const messages = Array.from(this.selectedMessages.values()).map(item => ({
         content: item.data.content,
         timestamp: item.data.timestamp,
         senderType: this.isIncomingMessage(item.container) ? 'customer' : 'agent'
       }));
       
-      // Sort messages by timestamp
       messages.sort((a, b) => a.timestamp - b.timestamp);
       
-      // Create combined message preview for title modal
       const combinedPreview = messages.map(msg => 
         `[${msg.timestamp.toLocaleTimeString()}] ${msg.content.substring(0, 100)}...`
       ).join('\n\n');
       
-      // Show title selection modal
       const titleData = await this.showTitleModal({
         content: combinedPreview,
         timestamp: messages[0].timestamp,
         type: 'multi'
-      }, conversationData);
+      }, conversationData, type);
       
       if (!titleData) {
-        return; // User cancelled
+        return;
       }
       
-      // Get Odoo config
       const config = await this.getOdooConfig();
       if (!config.url || !config.apiKey) {
         alert('Please configure Odoo connection first');
         return;
       }
       
-      // Create ticket with multiple messages
-      const ticketData = {
-        contactName: conversationData.contactName,
-        contactNumber: conversationData.contactNumber,
-        summary: titleData.title,
-        description: this.formatMultipleMessages(messages, conversationData),
-        messages: messages,
-        source: 'whatsapp_multiselect',
-        priority: this.detectPriorityFromMultiple(messages)
-      };
-      
-      // Disable create button during processing
-      const createBtn = document.getElementById('odoo-create-ticket');
+      const createBtn = document.getElementById(`odoo-create-${type}`);
       createBtn.disabled = true;
-      createBtn.textContent = 'Creating...';
+      createBtn.innerHTML = `Creating ${type}...`; // Changed to text while creating
       
-      const result = await this.sendToBackground({
-        action: 'createTicket',
-        config: config,
-        conversationData: ticketData
-      });
+      let result;
+      if (type === 'ticket') {
+        const ticketData = {
+          contactName: conversationData.contactName,
+          contactNumber: conversationData.contactNumber,
+          summary: titleData.title,
+          description: this.formatMultipleMessages(messages, conversationData, 'ticket'),
+          messages: messages,
+          source: 'whatsapp_multiselect',
+          priority: this.detectPriorityFromMultiple(messages)
+        };
+        
+        result = await this.sendToBackground({
+          action: 'createTicket',
+          config: config,
+          conversationData: ticketData
+        });
+      } else if (type === 'task') {
+        const taskData = {
+          name: titleData.title,
+          description: this.formatMultipleMessages(messages, conversationData, 'task'),
+          partner_name: conversationData.contactName,
+          messages: messages,
+          date_deadline: this.calculateDeadline(combinedPreview),
+          priority: this.detectPriority(combinedPreview)
+        };
+        
+        result = await this.sendToBackground({
+          action: 'createTask',
+          config: config,
+          taskData: taskData
+        });
+      } else if (type === 'lead') {
+        const leadData = {
+          name: titleData.title,
+          contact_name: conversationData.contactName,
+          phone: conversationData.contactNumber,
+          description: this.formatMultipleMessages(messages, conversationData, 'lead'),
+          messages: messages,
+          source_id: 'whatsapp',
+          priority: this.detectLeadPriority(combinedPreview)
+        };
+        
+        result = await this.sendToBackground({
+          action: 'createLead',
+          config: config,
+          leadData: leadData
+        });
+      }
       
       if (result.success) {
-        this.showNotification(`Ticket created successfully with ${messages.length} messages! ID: ${result.ticketId}`, 'success');
+        const itemId = result.ticketId || result.taskId || result.leadId;
+        this.showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} created successfully with ${messages.length} messages! ID: ${itemId}`, 'success');
         this.exitSelectionMode();
       } else {
-        this.showNotification(`Error creating ticket: ${result.error}`, 'error');
+        this.showNotification(`Error creating ${type}: ${result.error}`, 'error');
       }
       
     } catch (error) {
       this.showNotification(`Error: ${error.message}`, 'error');
     } finally {
-      // Re-enable create button
-      const createBtn = document.getElementById('odoo-create-ticket');
+      const createBtn = document.getElementById(`odoo-create-${type}`);
       createBtn.disabled = this.selectedMessages.size === 0;
-      createBtn.textContent = '🎫 Create Ticket';
+      // Re-add the icon to the button after creation attempt
+      const icon = this.modernIcons[type];
+      const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+      createBtn.innerHTML = `${icon} Create ${capitalizedType}`;
     }
   }
 
-  formatMultipleMessages(messages, conversationData) {
-    let description = `Multi-message ticket created from WhatsApp conversation with ${conversationData.contactName}\n\n`;
+  formatMultipleMessages(messages, conversationData, type) {
+    const typeLabels = {
+      ticket: 'Multi-message ticket',
+      task: 'Multi-message task', 
+      lead: 'Multi-message lead'
+    };
+    
+    let description = `${typeLabels[type]} created from WhatsApp conversation with ${conversationData.contactName}\n\n`;
     description += `=== CONVERSATION HISTORY (${messages.length} messages) ===\n\n`;
     
     messages.forEach((msg, index) => {
@@ -940,14 +1078,13 @@ class WhatsAppMessageTracker {
   detectPriorityFromMultiple(messages) {
     const urgentKeywords = ['urgent', 'asap', 'emergency', 'immediately', 'critical', 'help'];
     
-    // Check if any message contains urgent keywords
     const hasUrgentMessage = messages.some(msg => 
       urgentKeywords.some(keyword => 
         msg.content.toLowerCase().includes(keyword)
       )
     );
     
-    return hasUrgentMessage ? '3' : '1'; // High priority if urgent, normal otherwise
+    return hasUrgentMessage ? '3' : '1';
   }
 
   isIncomingMessage(messageContainer) {
@@ -958,30 +1095,24 @@ class WhatsAppMessageTracker {
     const button = messageElement.querySelector(`.odoo-action-btn.${type}`);
     
     try {
-      // Extract message data
       const messageData = this.extractMessageData(messageElement);
       const conversationData = this.extractConversationData();
       
-      // Show title selection modal for tickets
-      if (type === 'ticket') {
-        const titleData = await this.showTitleModal(messageData, conversationData);
-        if (!titleData) {
-          return; // User cancelled
-        }
-        messageData.customTitle = titleData.title;
-        messageData.titleOption = titleData.option;
+      const titleData = await this.showTitleModal(messageData, conversationData, type);
+      if (!titleData) {
+        return;
       }
+      messageData.customTitle = titleData.title;
+      messageData.titleOption = titleData.option;
       
       button.classList.add('creating');
       
-      // Get Odoo config
       const config = await this.getOdooConfig();
       if (!config.url || !config.apiKey) {
         alert('Please configure Odoo connection first');
         return;
       }
 
-      // Create the item based on type
       let result;
       switch (type) {
         case 'ticket':
@@ -1009,18 +1140,15 @@ class WhatsAppMessageTracker {
   }
 
   extractMessageData(messageContainer) {
-    // Extract message content from the actual WhatsApp structure
     const messageTextElement = messageContainer.querySelector('._ao3e.selectable-text.copyable-text span') ||
                               messageContainer.querySelector('.copyable-text ._ao3e') ||
                               messageContainer.querySelector('.selectable-text');
     
     const messageText = messageTextElement?.textContent?.trim() || '';
     
-    // Extract timestamp from WhatsApp's time display
     const timeElements = messageContainer.querySelectorAll('.x1c4vz4f.x2lah0s');
     let timestamp = new Date();
     
-    // Look for time in format like "9:47 am"
     for (const timeEl of timeElements) {
       const timeText = timeEl.textContent?.trim();
       if (timeText && timeText.match(/\d{1,2}:\d{2}\s*(am|pm)/i)) {
@@ -1029,10 +1157,9 @@ class WhatsAppMessageTracker {
       }
     }
     
-    // Detect message type
     const hasImage = messageContainer.querySelector('img[alt]');
     const hasDocument = messageContainer.querySelector('[data-icon]');
-    const hasQuote = messageContainer.querySelector('._aju2'); // Quoted message
+    const hasQuote = messageContainer.querySelector('._aju2');
     
     let type = 'text';
     if (hasImage) type = 'image';
@@ -1054,10 +1181,8 @@ class WhatsAppMessageTracker {
   }
 
   extractConversationData() {
-    // Extract contact information from the actual WhatsApp Web structure
     let contactName = 'Unknown Contact';
     
-    // Try multiple selectors for contact name
     const nameSelectors = [
       '[data-testid="conversation-header"] span[title]',
       'header span[title]',
@@ -1073,7 +1198,6 @@ class WhatsAppMessageTracker {
       }
     }
     
-    // Try to extract phone number from URL or other sources
     const contactNumber = this.extractPhoneNumber();
     
     console.log('Extracted conversation data:', {
@@ -1089,15 +1213,12 @@ class WhatsAppMessageTracker {
   }
 
   extractPhoneNumber() {
-    // WhatsApp Web doesn't easily expose phone numbers
-    // Try to extract from URL or other sources
     const url = window.location.href;
     const phoneMatch = url.match(/\/(\d+)@/);
     return phoneMatch ? `+${phoneMatch[1]}` : null;
   }
 
   async createTicket(messageData, conversationData, config) {
-    // Use custom title if provided, otherwise use default logic
     let ticketTitle;
     if (messageData.customTitle) {
       ticketTitle = messageData.customTitle;
@@ -1127,8 +1248,10 @@ class WhatsAppMessageTracker {
   }
 
   async createTask(messageData, conversationData, config) {
+    const taskTitle = messageData.customTitle || `WhatsApp Task: ${messageData.content.substring(0, 30)}...`;
+    
     const taskData = {
-      name: `WhatsApp Task: ${messageData.content.substring(0, 30)}...`,
+      name: taskTitle,
       description: `Task created from WhatsApp message:\n"${messageData.content}"\n\nFrom: ${conversationData.contactName}\nAt: ${messageData.timestamp}`,
       partner_name: conversationData.contactName,
       date_deadline: this.calculateDeadline(messageData.content),
@@ -1143,8 +1266,10 @@ class WhatsAppMessageTracker {
   }
 
   async createLead(messageData, conversationData, config) {
+    const leadTitle = messageData.customTitle || `WhatsApp Lead: ${conversationData.contactName}`;
+    
     const leadData = {
-      name: `WhatsApp Lead: ${conversationData.contactName}`,
+      name: leadTitle,
       contact_name: conversationData.contactName,
       phone: conversationData.contactNumber,
       description: `Lead from WhatsApp message:\n"${messageData.content}"\n\nReceived: ${messageData.timestamp}`,
@@ -1164,9 +1289,9 @@ class WhatsAppMessageTracker {
     const content = messageContent.toLowerCase();
     
     if (urgentKeywords.some(keyword => content.includes(keyword))) {
-      return '3'; // High priority
+      return '3';
     }
-    return '1'; // Normal priority
+    return '1';
   }
 
   detectLeadPriority(messageContent) {
@@ -1180,37 +1305,33 @@ class WhatsAppMessageTracker {
   }
 
   calculateDeadline(messageContent) {
-    // Simple deadline detection
     const content = messageContent.toLowerCase();
     if (content.includes('urgent') || content.includes('asap')) {
-      return new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
+      return new Date(Date.now() + 24 * 60 * 60 * 1000);
     } else if (content.includes('this week')) {
-      return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Next week
+      return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
-    return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days default
+    return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
   }
 
-  async showTitleModal(messageData, conversationData) {
+  async showTitleModal(messageData, conversationData, type = 'ticket') {
     return new Promise((resolve) => {
-      // Create modal overlay
       const modal = document.createElement('div');
       modal.className = 'odoo-title-modal';
       
-      // Create modal content
       const modalContent = document.createElement('div');
       modalContent.className = 'odoo-title-modal-content';
       
-      // Handle multi-message vs single message display
       let displayMessage, messageStart, modalTitle;
       
       if (messageData.type === 'multi') {
-        modalTitle = 'Create Multi-Message Ticket Title';
+        modalTitle = `Create Multi-Message ${type.charAt(0).toUpperCase() + type.slice(1)} Title`;
         displayMessage = messageData.content.length > 200 
           ? messageData.content.substring(0, 200) + '...' 
           : messageData.content;
         messageStart = `Conversation with ${conversationData.contactName}`;
       } else {
-        modalTitle = 'Create Ticket Title';
+        modalTitle = `Create ${type.charAt(0).toUpperCase() + type.slice(1)} Title`;
         displayMessage = messageData.content.length > 100 
           ? messageData.content.substring(0, 100) + '...' 
           : messageData.content;
@@ -1219,14 +1340,10 @@ class WhatsAppMessageTracker {
       
       const contactName = conversationData.contactName || 'Unknown Contact';
       
-      modalContent.innerHTML = `
-        <h3>${modalTitle}</h3>
-        
-        <div class="odoo-title-modal-message">
-          <strong>${messageData.type === 'multi' ? 'Selected Messages:' : 'Message:'}</strong> "${displayMessage}"
-        </div>
-        
-        <div class="odoo-title-options">
+      // Different options based on type
+      let titleOptions = '';
+      if (type === 'ticket') {
+        titleOptions = `
           <div class="odoo-title-option">
             <input type="radio" id="title-option-1" name="titleOption" value="custom" checked>
             <label for="title-option-1">Write custom title</label>
@@ -1243,30 +1360,78 @@ class WhatsAppMessageTracker {
             <input type="radio" id="title-option-4" name="titleOption" value="auto">
             <label for="title-option-4">Auto-generate: "WhatsApp: ${messageStart}..."</label>
           </div>
+        `;
+      } else if (type === 'task') {
+        titleOptions = `
+          <div class="odoo-title-option">
+            <input type="radio" id="task-title-custom" name="titleOption" value="custom" checked>
+            <label for="task-title-custom">Write custom task title</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="task-title-action" name="titleOption" value="action-based">
+            <label for="task-title-action">Action-based: "Handle WhatsApp request from ${contactName}"</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="task-title-followup" name="titleOption" value="followup">
+            <label for="task-title-followup">Follow-up: "Follow up on WhatsApp conversation"</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="task-title-auto" name="titleOption" value="auto">
+            <label for="task-title-auto">Auto-generate: "WhatsApp Task: ${messageStart}..."</label>
+          </div>
+        `;
+      } else if (type === 'lead') {
+        titleOptions = `
+          <div class="odoo-title-option">
+            <input type="radio" id="lead-title-custom" name="titleOption" value="custom" checked>
+            <label for="lead-title-custom">Write custom lead title</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="lead-title-prospect" name="titleOption" value="prospect">
+            <label for="lead-title-prospect">Prospect: "WhatsApp prospect - ${contactName}"</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="lead-title-inquiry" name="titleOption" value="inquiry">
+            <label for="lead-title-inquiry">Inquiry: "Sales inquiry from WhatsApp"</label>
+          </div>
+          <div class="odoo-title-option">
+            <input type="radio" id="lead-title-auto" name="titleOption" value="auto">
+            <label for="lead-title-auto">Auto-generate: "WhatsApp Lead: ${contactName}"</label>
+          </div>
+        `;
+      }
+      
+      modalContent.innerHTML = `
+        <h3>${modalTitle}</h3>
+        
+        <div class="odoo-title-modal-message">
+          <strong>${messageData.type === 'multi' ? 'Selected Messages:' : 'Message:'}</strong> "${displayMessage}"
+        </div>
+        
+        <div class="odoo-title-options">
+          ${titleOptions}
         </div>
         
         <input type="text" 
                class="odoo-title-input" 
-               placeholder="Enter custom ticket title..." 
+               placeholder="Enter custom ${type} title..." 
                maxlength="100"
                value="">
         
         <div class="odoo-title-buttons">
           <button class="odoo-title-btn secondary" data-action="cancel">Cancel</button>
-          <button class="odoo-title-btn primary" data-action="create">Create Ticket</button>
+          <button class="odoo-title-btn primary" data-action="create">Create ${type.charAt(0).toUpperCase() + type.slice(1)}</button>
         </div>
       `;
       
       modal.appendChild(modalContent);
       document.body.appendChild(modal);
       
-      // Get elements
       const titleInput = modalContent.querySelector('.odoo-title-input');
       const radioButtons = modalContent.querySelectorAll('input[name="titleOption"]');
       const createBtn = modalContent.querySelector('[data-action="create"]');
       const cancelBtn = modalContent.querySelector('[data-action="cancel"]');
       
-      // Update input based on radio selection
       const updateTitleInput = () => {
         const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
         
@@ -1281,25 +1446,48 @@ class WhatsAppMessageTracker {
             titleInput.disabled = true;
             break;
           case 'contact-based':
-            titleInput.value = `Support request from ${contactName}`;
+            if (type === 'ticket') {
+              titleInput.value = `Support request from ${contactName}`;
+            } else {
+              titleInput.value = `${type.charAt(0).toUpperCase() + type.slice(1)} from ${contactName}`;
+            }
+            titleInput.disabled = true;
+            break;
+          case 'action-based':
+            titleInput.value = `Handle WhatsApp request from ${contactName}`;
+            titleInput.disabled = true;
+            break;
+          case 'followup':
+            titleInput.value = 'Follow up on WhatsApp conversation';
+            titleInput.disabled = true;
+            break;
+          case 'prospect':
+            titleInput.value = `WhatsApp prospect - ${contactName}`;
+            titleInput.disabled = true;
+            break;
+          case 'inquiry':
+            titleInput.value = 'Sales inquiry from WhatsApp';
             titleInput.disabled = true;
             break;
           case 'auto':
-            titleInput.value = `WhatsApp: ${messageStart}...`;
+            if (type === 'ticket') {
+              titleInput.value = `WhatsApp: ${messageStart}...`;
+            } else if (type === 'task') {
+              titleInput.value = `WhatsApp Task: ${messageStart}...`;
+            } else if (type === 'lead') {
+              titleInput.value = `WhatsApp Lead: ${contactName}`;
+            }
             titleInput.disabled = true;
             break;
         }
       };
       
-      // Initial setup
       updateTitleInput();
       
-      // Event listeners
       radioButtons.forEach(radio => {
         radio.addEventListener('change', updateTitleInput);
       });
       
-      // Validate and enable/disable create button
       const validateTitle = () => {
         const title = titleInput.value.trim();
         createBtn.disabled = !title || title.length < 3;
@@ -1310,10 +1498,8 @@ class WhatsAppMessageTracker {
         radio.addEventListener('change', validateTitle);
       });
       
-      // Initial validation
       validateTitle();
       
-      // Button handlers
       createBtn.addEventListener('click', () => {
         const title = titleInput.value.trim();
         const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
@@ -1332,7 +1518,6 @@ class WhatsAppMessageTracker {
         resolve(null);
       });
       
-      // Close on backdrop click
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
           modal.remove();
@@ -1340,7 +1525,6 @@ class WhatsAppMessageTracker {
         }
       });
       
-      // Keyboard shortcuts
       document.addEventListener('keydown', function escapeHandler(e) {
         if (e.key === 'Escape') {
           modal.remove();
@@ -1356,15 +1540,13 @@ class WhatsAppMessageTracker {
 
   showSuccess(button, type, result) {
     const originalIcon = button.innerHTML;
-    button.innerHTML = '✅';
+    button.innerHTML = this.modernIcons.success;
     button.classList.add('success');
     
-    // Show enhanced notification
     const itemName = type.charAt(0).toUpperCase() + type.slice(1);
     const itemId = result.ticketId || result.taskId || result.leadId;
     this.showNotification(`${itemName} created successfully! ID: ${itemId}`, 'success');
     
-    // Reset button after 3 seconds
     setTimeout(() => {
       button.innerHTML = originalIcon;
       button.classList.remove('success');
@@ -1373,7 +1555,7 @@ class WhatsAppMessageTracker {
 
   showError(button, error) {
     const originalIcon = button.innerHTML;
-    button.innerHTML = '❌';
+    button.innerHTML = this.modernIcons.error;
     button.classList.add('error');
     
     this.showNotification(`Error: ${error}`, 'error');
@@ -1385,20 +1567,19 @@ class WhatsAppMessageTracker {
   }
 
   showNotification(message, type) {
-    // Create enhanced notification
     const notification = document.createElement('div');
     notification.className = `odoo-notification ${type}`;
     
-    const title = type === 'success' ? '✅ Success!' : '❌ Error';
+    // Using simple text for notification title as icons here might be complex
+    const title = type === 'success' ? 'Success!' : 'Error';
     
     notification.innerHTML = `
-      <div class="odoo-notification-title">${title}</div>
+      <div class="odoo-notification-title">${type === 'success' ? this.modernIcons.success : this.modernIcons.error} ${title}</div>
       <div class="odoo-notification-message">${message}</div>
     `;
     
     document.body.appendChild(notification);
     
-    // Auto-remove after 4 seconds
     setTimeout(() => {
       notification.style.animation = 'slideInLeft 0.3s ease-out reverse';
       setTimeout(() => notification.remove(), 300);
@@ -1406,7 +1587,6 @@ class WhatsAppMessageTracker {
   }
 
   parseWhatsAppTime(timeString) {
-    // Parse WhatsApp timestamp (e.g., "2:30 PM")
     const now = new Date();
     const [time, period] = timeString.split(' ');
     const [hours, minutes] = time.split(':');
@@ -1442,5 +1622,4 @@ class WhatsAppMessageTracker {
   }
 }
 
-// Initialize the tracker
 const messageTracker = new WhatsAppMessageTracker();

@@ -1,6 +1,4 @@
-// Enhanced background.js with Task and Lead creation
-// This is the complete working background script
-
+// Enhanced background.js with full multi-message support for all types
 class OdooAPIClient {
   constructor(config) {
     this.url = config.url;
@@ -23,7 +21,6 @@ class OdooAPIClient {
       this.log('URL:', this.url);
       this.log('API Key length:', this.apiKey ? this.apiKey.length : 'NO API KEY');
       
-      // First, get the database info
       const dbInfo = await this.getDatabaseInfo();
       this.log('Database info detected:', dbInfo);
       
@@ -126,16 +123,15 @@ class OdooAPIClient {
     try {
       const partnerId = await this.findOrCreatePartner(conversationData);
       
-      // Use the summary as the ticket title (name field in Odoo)
-const ticketTitle = conversationData.summary || `WhatsApp: ${conversationData.contactName}`;
+      const ticketTitle = conversationData.summary || `WhatsApp: ${conversationData.contactName}`;
 
-const ticketData = {
-  name: ticketTitle,  // This is the ticket title in Odoo
-  description: conversationData.description,  // This is the description field
-  partner_id: partnerId,
-  priority: '1',
-  stage_id: 1,
-};
+      const ticketData = {
+        name: ticketTitle,
+        description: conversationData.description,
+        partner_id: partnerId,
+        priority: conversationData.priority || '1',
+        stage_id: 1,
+      };
       
       const createTicketCall = {
         method: 'execute_kw',
@@ -152,7 +148,7 @@ const ticketData = {
       const ticketId = await this.xmlrpcCall(objectUrl, createTicketCall);
       
       if (conversationData.messages) {
-        await this.logConversation(ticketId, conversationData);
+        await this.logConversation(ticketId, conversationData, 'helpdesk.ticket');
       }
       
       return {
@@ -207,6 +203,11 @@ const ticketData = {
       
       const taskId = await this.xmlrpcCall(objectUrl, createTaskCall);
       
+      // Log conversation for multi-message tasks
+      if (taskData.messages) {
+        await this.logConversation(taskId, taskData, 'project.task');
+      }
+      
       return {
         success: true,
         taskId: taskId,
@@ -257,6 +258,11 @@ const ticketData = {
       };
       
       const leadId = await this.xmlrpcCall(objectUrl, createLeadCall);
+      
+      // Log conversation for multi-message leads
+      if (leadData.messages) {
+        await this.logConversation(leadId, leadData, 'crm.lead');
+      }
       
       return {
         success: true,
@@ -500,15 +506,23 @@ const ticketData = {
     return date.toISOString().split('T')[0];
   }
 
-  async logConversation(ticketId, conversationData) {
+  async logConversation(recordId, recordData, modelName) {
     const objectUrl = `${this.url}/xmlrpc/2/object`;
     
-    const messageBody = this.formatConversationMessages(conversationData.messages);
+    let messageBody;
+    if (recordData.messages && Array.isArray(recordData.messages)) {
+      // Multi-message format
+      messageBody = this.formatConversationMessages(recordData.messages);
+    } else {
+      // Single message format - extract from description or content
+      const content = recordData.description || recordData.content || 'WhatsApp conversation';
+      messageBody = `<h3>WhatsApp ${this.getModelDisplayName(modelName)}</h3>\n<p>${this.escapeHtml(content)}</p>`;
+    }
     
     const noteData = {
       message: messageBody,
-      model: 'helpdesk.ticket',
-      res_id: ticketId,
+      model: modelName,
+      res_id: recordId,
       message_type: 'comment',
       subtype_id: 1
     };
@@ -532,15 +546,26 @@ const ticketData = {
     }
   }
 
+  getModelDisplayName(modelName) {
+    const modelNames = {
+      'helpdesk.ticket': 'Ticket',
+      'project.task': 'Task', 
+      'crm.lead': 'Lead'
+    };
+    return modelNames[modelName] || 'Record';
+  }
+
   formatConversationMessages(messages) {
     let formattedMessages = '<h3>WhatsApp Conversation History</h3>\n';
     
-    messages.forEach(msg => {
+    messages.forEach((msg, index) => {
       const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time';
       const sender = msg.senderType === 'customer' ? '👤 Customer' : '👨‍💼 Agent';
       const escapedContent = this.escapeHtml(msg.content);
-      formattedMessages += `<p><strong>${sender}</strong> (${timestamp}):<br/>${escapedContent}</p>\n`;
+      formattedMessages += `<p><strong>${index + 1}. ${sender}</strong> (${timestamp}):<br/>${escapedContent}</p>\n`;
     });
+    
+    formattedMessages += `<hr/><p><em>Created from WhatsApp Web on ${new Date().toLocaleString()}</em></p>`;
     
     return formattedMessages;
   }
@@ -705,7 +730,7 @@ const ticketData = {
   }
 }
 
-// Message handlers
+// Enhanced message handlers
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background received message:', message.action);
   
@@ -762,21 +787,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Handler functions
+// Enhanced handler functions with multi-message support
 async function handleCreateTicket(config, conversationData) {
   console.log('Handling create ticket with config:', config);
+  console.log('Conversation data:', {
+    ...conversationData,
+    messages: conversationData.messages ? `${conversationData.messages.length} messages` : 'no messages'
+  });
   const odooClient = new OdooAPIClient(config);
   return await odooClient.createTicket(conversationData);
 }
 
 async function handleCreateTask(config, taskData) {
   console.log('Handling create task with config:', config);
+  console.log('Task data:', {
+    ...taskData,
+    messages: taskData.messages ? `${taskData.messages.length} messages` : 'no messages'
+  });
   const odooClient = new OdooAPIClient(config);
   return await odooClient.createTask(taskData);
 }
 
 async function handleCreateLead(config, leadData) {
   console.log('Handling create lead with config:', config);
+  console.log('Lead data:', {
+    ...leadData,
+    messages: leadData.messages ? `${leadData.messages.length} messages` : 'no messages'
+  });
   const odooClient = new OdooAPIClient(config);
   return await odooClient.createLead(leadData);
 }
