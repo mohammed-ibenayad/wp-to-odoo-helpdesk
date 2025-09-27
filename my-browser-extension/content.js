@@ -1,13 +1,16 @@
-// Enhanced content.js with one-click message ticket creation and custom title selection
+// Enhanced content.js with multi-message selection and custom title selection
 class WhatsAppMessageTracker {
   constructor() {
-    console.log('WhatsApp One-Click Ticket Creator Initialized');
+    console.log('WhatsApp Multi-Message Ticket Creator Initialized');
+    this.selectedMessages = new Map(); // Changed from Set to Map
+    this.selectionMode = false;
     this.init();
   }
 
   init() {
     this.addCustomStyles();
     this.startMonitoring();
+    this.addSelectionPanel();
   }
 
   addCustomStyles() {
@@ -26,6 +29,195 @@ class WhatsAppMessageTracker {
         display: none !important;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(0,0,0,0.1);
+      }
+      
+      .odoo-selection-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        z-index: 10001;
+        min-width: 300px;
+        max-width: 400px;
+        border: 2px solid #25D366;
+        display: none;
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      .odoo-selection-panel.active {
+        display: block;
+      }
+      
+      @keyframes slideInRight {
+        0% { 
+          transform: translateX(100%); 
+          opacity: 0; 
+        }
+        100% { 
+          transform: translateX(0); 
+          opacity: 1; 
+        }
+      }
+      
+      .odoo-selection-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .odoo-selection-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+      }
+      
+      .odoo-selection-count {
+        background: #25D366;
+        color: white;
+        border-radius: 12px;
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      
+      .odoo-selection-messages {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+      }
+      
+      .odoo-selection-message {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border-left: 3px solid #25D366;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      
+      .odoo-selection-message-time {
+        font-size: 11px;
+        color: #666;
+        margin-top: 4px;
+      }
+      
+      .odoo-selection-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      
+      .odoo-selection-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 80px;
+      }
+      
+      .odoo-selection-btn.primary {
+        background: #25D366;
+        color: white;
+      }
+      
+      .odoo-selection-btn.primary:hover {
+        background: #1ea952;
+      }
+      
+      .odoo-selection-btn.secondary {
+        background: #f8f9fa;
+        color: #666;
+        border: 1px solid #e0e0e0;
+      }
+      
+      .odoo-selection-btn.secondary:hover {
+        background: #e9ecef;
+      }
+      
+      .odoo-selection-btn.danger {
+        background: #dc3545;
+        color: white;
+      }
+      
+      .odoo-selection-btn.danger:hover {
+        background: #c82333;
+      }
+      
+      .odoo-selection-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      .odoo-message-selected {
+        background: rgba(37, 211, 102, 0.1) !important;
+        border: 2px solid #25D366 !important;
+        border-radius: 8px;
+        position: relative;
+      }
+      
+      .odoo-message-selected::after {
+        content: '✓';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #25D366;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 1001;
+      }
+      
+      .odoo-selection-mode-active .odoo-message-actions {
+        display: none !important;
+      }
+      
+      .odoo-selection-mode-active .odoo-processed {
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .odoo-selection-mode-active .odoo-processed:hover {
+        background: rgba(37, 211, 102, 0.05);
+        transform: scale(1.02);
+      }
+      
+      .odoo-multiselect-btn {
+        background: #007AFF;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin: 0 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .odoo-multiselect-btn:hover {
+        background: #0056b3;
+        transform: translateY(-1px);
       }
       
       .odoo-title-modal {
@@ -305,21 +497,6 @@ class WhatsAppMessageTracker {
         opacity: 1;
       }
       
-      /* Add a small indicator dot for processed messages */
-      .odoo-processed::after {
-        content: '●';
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 6px;
-        height: 6px;
-        background: #25D366;
-        border-radius: 50%;
-        font-size: 6px;
-        opacity: 0.6;
-        z-index: 10;
-      }
-      
       /* Mobile responsive adjustments */
       @media (max-width: 768px) {
         .odoo-message-actions {
@@ -332,6 +509,13 @@ class WhatsAppMessageTracker {
           height: 32px;
           font-size: 14px;
           padding: 6px;
+        }
+        
+        .odoo-selection-panel {
+          top: 10px;
+          right: 10px;
+          left: 10px;
+          max-width: none;
         }
       }
       
@@ -350,7 +534,7 @@ class WhatsAppMessageTracker {
       .odoo-notification {
         position: fixed;
         top: 20px;
-        right: 20px;
+        left: 20px;
         background: white;
         border-radius: 8px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.15);
@@ -359,16 +543,16 @@ class WhatsAppMessageTracker {
         font-size: 14px;
         max-width: 350px;
         border-left: 4px solid #25D366;
-        animation: slideInRight 0.3s ease-out;
+        animation: slideInLeft 0.3s ease-out;
       }
       
       .odoo-notification.error {
         border-left-color: #F44336;
       }
       
-      @keyframes slideInRight {
+      @keyframes slideInLeft {
         0% { 
-          transform: translateX(100%); 
+          transform: translateX(-100%); 
           opacity: 0; 
         }
         100% { 
@@ -389,6 +573,52 @@ class WhatsAppMessageTracker {
       }
     `;
     document.head.appendChild(style);
+  }
+
+  addSelectionPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'odoo-selection-panel';
+    panel.id = 'odoo-selection-panel';
+    
+    panel.innerHTML = `
+      <div class="odoo-selection-header">
+        <h3 class="odoo-selection-title">Selected Messages</h3>
+        <span class="odoo-selection-count">0</span>
+      </div>
+      
+      <div class="odoo-selection-messages" id="odoo-selected-messages">
+        <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
+          Click messages to select them for the ticket
+        </p>
+      </div>
+      
+      <div class="odoo-selection-actions">
+        <button class="odoo-selection-btn primary" id="odoo-create-ticket" disabled>
+          🎫 Create Ticket
+        </button>
+        <button class="odoo-selection-btn secondary" id="odoo-clear-selection">
+          Clear All
+        </button>
+        <button class="odoo-selection-btn danger" id="odoo-exit-selection">
+          Exit Selection
+        </button>
+      </div>
+    `;
+    
+    document.body.appendChild(panel);
+    
+    // Bind panel events
+    document.getElementById('odoo-create-ticket').addEventListener('click', () => {
+      this.createTicketFromSelection();
+    });
+    
+    document.getElementById('odoo-clear-selection').addEventListener('click', () => {
+      this.clearSelection();
+    });
+    
+    document.getElementById('odoo-exit-selection').addEventListener('click', () => {
+      this.exitSelectionMode();
+    });
   }
 
   startMonitoring() {
@@ -422,6 +652,14 @@ class WhatsAppMessageTracker {
         this.addMessageActions(container);
         container.classList.add('odoo-processed');
         processedCount++;
+        
+        // Add selection click handler
+        container.addEventListener('click', (e) => {
+          if (this.selectionMode) {
+            e.stopPropagation();
+            this.toggleMessageSelection(container);
+          }
+        });
       }
     });
     
@@ -438,11 +676,6 @@ class WhatsAppMessageTracker {
     return hasMessageClass && (hasCopyableText || hasMessageContent);
   }
 
-  looksLikeMessage(element) {
-    // This method is no longer used with the new detection
-    return false;
-  }
-
   addMessageActions(messageContainer) {
     // Skip if already has actions
     if (messageContainer.querySelector('.odoo-message-actions')) return;
@@ -452,9 +685,6 @@ class WhatsAppMessageTracker {
     const isIncoming = messageContainer.querySelector('.message-in');
     
     if (!isIncoming && !isOutgoing) return; // Not a valid message
-    
-    // For now, add buttons to both incoming and outgoing for testing
-    // Later we can filter to only incoming messages
     
     console.log('Processing message:', isIncoming ? 'INCOMING' : 'OUTGOING');
     
@@ -471,7 +701,7 @@ class WhatsAppMessageTracker {
     const actionsContainer = document.createElement('div');
     actionsContainer.className = 'odoo-message-actions';
 
-    // Create buttons
+    // Create single message buttons
     const ticketBtn = this.createActionButton('🎫', 'Create Ticket', 'ticket', () => {
       this.createFromMessage(messageContainer, 'ticket');
     });
@@ -484,9 +714,18 @@ class WhatsAppMessageTracker {
       this.createFromMessage(messageContainer, 'lead');
     });
 
+    // Create multi-select button
+    const multiSelectBtn = document.createElement('button');
+    multiSelectBtn.className = 'odoo-multiselect-btn';
+    multiSelectBtn.innerHTML = '📋 Multi-Select';
+    multiSelectBtn.onclick = () => {
+      this.enterSelectionMode();
+    };
+
     actionsContainer.appendChild(ticketBtn);
     actionsContainer.appendChild(taskBtn);
     actionsContainer.appendChild(leadBtn);
+    actionsContainer.appendChild(multiSelectBtn);
 
     // Position the container relative to the message content
     messageContent.style.position = 'relative';
@@ -504,6 +743,215 @@ class WhatsAppMessageTracker {
     `;
     button.onclick = clickHandler;
     return button;
+  }
+
+  enterSelectionMode() {
+    this.selectionMode = true;
+    this.selectedMessages.clear();
+    
+    // Add visual indicators
+    document.body.classList.add('odoo-selection-mode-active');
+    document.getElementById('odoo-selection-panel').classList.add('active');
+    
+    this.showNotification('Selection mode activated! Click messages to select them.', 'success');
+    this.updateSelectionPanel();
+  }
+
+  exitSelectionMode() {
+    this.selectionMode = false;
+    this.selectedMessages.clear();
+    
+    // Remove visual indicators
+    document.body.classList.remove('odoo-selection-mode-active');
+    document.getElementById('odoo-selection-panel').classList.remove('active');
+    
+    // Clear selection visuals
+    document.querySelectorAll('.odoo-message-selected').forEach(msg => {
+      msg.classList.remove('odoo-message-selected');
+    });
+    
+    this.showNotification('Selection mode deactivated.', 'success');
+  }
+
+  toggleMessageSelection(messageContainer) {
+    const messageId = this.getMessageId(messageContainer);
+    
+    if (this.selectedMessages.has(messageId)) {
+      this.selectedMessages.delete(messageId);
+      messageContainer.classList.remove('odoo-message-selected');
+    } else {
+      const messageData = this.extractMessageData(messageContainer);
+      this.selectedMessages.set(messageId, {
+        container: messageContainer,
+        data: messageData
+      });
+      messageContainer.classList.add('odoo-message-selected');
+    }
+    
+    this.updateSelectionPanel();
+  }
+
+  getMessageId(messageContainer) {
+    // Create a unique ID for the message based on its content and position
+    const messageText = this.extractMessageData(messageContainer).content;
+    const timestamp = this.extractMessageData(messageContainer).timestamp;
+    return btoa(messageText.substring(0, 50) + timestamp.getTime()).replace(/[^a-zA-Z0-9]/g, '');
+  }
+
+  clearSelection() {
+    document.querySelectorAll('.odoo-message-selected').forEach(msg => {
+      msg.classList.remove('odoo-message-selected');
+    });
+    this.selectedMessages.clear();
+    this.updateSelectionPanel();
+  }
+
+  updateSelectionPanel() {
+    const count = this.selectedMessages.size;
+    const countElement = document.querySelector('.odoo-selection-count');
+    const messagesContainer = document.getElementById('odoo-selected-messages');
+    const createBtn = document.getElementById('odoo-create-ticket');
+    
+    countElement.textContent = count;
+    createBtn.disabled = count === 0;
+    
+    if (count === 0) {
+      messagesContainer.innerHTML = `
+        <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
+          Click messages to select them for the ticket
+        </p>
+      `;
+    } else {
+      const messagesHtml = Array.from(this.selectedMessages.values())
+        .map(item => {
+          const truncatedContent = item.data.content.length > 80 
+            ? item.data.content.substring(0, 80) + '...' 
+            : item.data.content;
+          
+          return `
+            <div class="odoo-selection-message">
+              ${truncatedContent}
+              <div class="odoo-selection-message-time">
+                ${item.data.timestamp.toLocaleTimeString()}
+              </div>
+            </div>
+          `;
+        }).join('');
+      
+      messagesContainer.innerHTML = messagesHtml;
+    }
+  }
+
+  async createTicketFromSelection() {
+    if (this.selectedMessages.size === 0) return;
+    
+    try {
+      // Get conversation data
+      const conversationData = this.extractConversationData();
+      
+      // Combine all selected messages
+      const messages = Array.from(this.selectedMessages.values()).map(item => ({
+        content: item.data.content,
+        timestamp: item.data.timestamp,
+        senderType: this.isIncomingMessage(item.container) ? 'customer' : 'agent'
+      }));
+      
+      // Sort messages by timestamp
+      messages.sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Create combined message preview for title modal
+      const combinedPreview = messages.map(msg => 
+        `[${msg.timestamp.toLocaleTimeString()}] ${msg.content.substring(0, 100)}...`
+      ).join('\n\n');
+      
+      // Show title selection modal
+      const titleData = await this.showTitleModal({
+        content: combinedPreview,
+        timestamp: messages[0].timestamp,
+        type: 'multi'
+      }, conversationData);
+      
+      if (!titleData) {
+        return; // User cancelled
+      }
+      
+      // Get Odoo config
+      const config = await this.getOdooConfig();
+      if (!config.url || !config.apiKey) {
+        alert('Please configure Odoo connection first');
+        return;
+      }
+      
+      // Create ticket with multiple messages
+      const ticketData = {
+        contactName: conversationData.contactName,
+        contactNumber: conversationData.contactNumber,
+        summary: titleData.title,
+        description: this.formatMultipleMessages(messages, conversationData),
+        messages: messages,
+        source: 'whatsapp_multiselect',
+        priority: this.detectPriorityFromMultiple(messages)
+      };
+      
+      // Disable create button during processing
+      const createBtn = document.getElementById('odoo-create-ticket');
+      createBtn.disabled = true;
+      createBtn.textContent = 'Creating...';
+      
+      const result = await this.sendToBackground({
+        action: 'createTicket',
+        config: config,
+        conversationData: ticketData
+      });
+      
+      if (result.success) {
+        this.showNotification(`Ticket created successfully with ${messages.length} messages! ID: ${result.ticketId}`, 'success');
+        this.exitSelectionMode();
+      } else {
+        this.showNotification(`Error creating ticket: ${result.error}`, 'error');
+      }
+      
+    } catch (error) {
+      this.showNotification(`Error: ${error.message}`, 'error');
+    } finally {
+      // Re-enable create button
+      const createBtn = document.getElementById('odoo-create-ticket');
+      createBtn.disabled = this.selectedMessages.size === 0;
+      createBtn.textContent = '🎫 Create Ticket';
+    }
+  }
+
+  formatMultipleMessages(messages, conversationData) {
+    let description = `Multi-message ticket created from WhatsApp conversation with ${conversationData.contactName}\n\n`;
+    description += `=== CONVERSATION HISTORY (${messages.length} messages) ===\n\n`;
+    
+    messages.forEach((msg, index) => {
+      const senderLabel = msg.senderType === 'customer' ? '👤 Customer' : '👨‍💼 Agent';
+      const timestamp = msg.timestamp.toLocaleString();
+      description += `${index + 1}. ${senderLabel} (${timestamp}):\n${msg.content}\n\n`;
+    });
+    
+    description += `=== END CONVERSATION ===\n\n`;
+    description += `Created from WhatsApp Web on ${new Date().toLocaleString()}`;
+    
+    return description;
+  }
+
+  detectPriorityFromMultiple(messages) {
+    const urgentKeywords = ['urgent', 'asap', 'emergency', 'immediately', 'critical', 'help'];
+    
+    // Check if any message contains urgent keywords
+    const hasUrgentMessage = messages.some(msg => 
+      urgentKeywords.some(keyword => 
+        msg.content.toLowerCase().includes(keyword)
+      )
+    );
+    
+    return hasUrgentMessage ? '3' : '1'; // High priority if urgent, normal otherwise
+  }
+
+  isIncomingMessage(messageContainer) {
+    return !!messageContainer.querySelector('.message-in');
   }
 
   async createFromMessage(messageElement, type) {
@@ -752,20 +1200,30 @@ class WhatsAppMessageTracker {
       const modalContent = document.createElement('div');
       modalContent.className = 'odoo-title-modal-content';
       
-      // Truncate message for display
-      const displayMessage = messageData.content.length > 100 
-        ? messageData.content.substring(0, 100) + '...' 
-        : messageData.content;
+      // Handle multi-message vs single message display
+      let displayMessage, messageStart, modalTitle;
       
-      // Generate title options
-      const messageStart = messageData.content.substring(0, 30);
+      if (messageData.type === 'multi') {
+        modalTitle = 'Create Multi-Message Ticket Title';
+        displayMessage = messageData.content.length > 200 
+          ? messageData.content.substring(0, 200) + '...' 
+          : messageData.content;
+        messageStart = `Conversation with ${conversationData.contactName}`;
+      } else {
+        modalTitle = 'Create Ticket Title';
+        displayMessage = messageData.content.length > 100 
+          ? messageData.content.substring(0, 100) + '...' 
+          : messageData.content;
+        messageStart = messageData.content.substring(0, 30);
+      }
+      
       const contactName = conversationData.contactName || 'Unknown Contact';
       
       modalContent.innerHTML = `
-        <h3>Create Ticket Title</h3>
+        <h3>${modalTitle}</h3>
         
         <div class="odoo-title-modal-message">
-          <strong>Message:</strong> "${displayMessage}"
+          <strong>${messageData.type === 'multi' ? 'Selected Messages:' : 'Message:'}</strong> "${displayMessage}"
         </div>
         
         <div class="odoo-title-options">
@@ -775,7 +1233,7 @@ class WhatsAppMessageTracker {
           </div>
           <div class="odoo-title-option">
             <input type="radio" id="title-option-2" name="titleOption" value="message-start">
-            <label for="title-option-2">Use message start: "${messageStart}..."</label>
+            <label for="title-option-2">${messageData.type === 'multi' ? 'Use conversation context' : 'Use message start'}: "${messageStart}..."</label>
           </div>
           <div class="odoo-title-option">
             <input type="radio" id="title-option-3" name="titleOption" value="contact-based">
@@ -942,7 +1400,7 @@ class WhatsAppMessageTracker {
     
     // Auto-remove after 4 seconds
     setTimeout(() => {
-      notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+      notification.style.animation = 'slideInLeft 0.3s ease-out reverse';
       setTimeout(() => notification.remove(), 300);
     }, 4000);
   }
