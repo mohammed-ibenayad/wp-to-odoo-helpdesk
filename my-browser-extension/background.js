@@ -4,7 +4,7 @@ class OdooAPIClient {
     this.url = config.url;
     this.apiKey = config.apiKey;
     this.uid = null;
-    this.username = null;
+    this.username = config.username;
     this.database = null;
     this.debug = true;
   }
@@ -28,11 +28,10 @@ class OdooAPIClient {
         throw new Error('Could not determine database name from URL');
       }
       
-      this.database = dbInfo.database;
-      this.username = dbInfo.username || 'info@belgogreen.be';
+      this.database = dbInfo.database;      
       
       this.log('Using database:', this.database);
-      this.log('Using username:', this.username);
+      
       
       const loginUrl = `${this.url}/xmlrpc/2/common`;
       this.log('Authentication URL:', loginUrl);
