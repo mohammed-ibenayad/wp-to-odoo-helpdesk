@@ -1,7 +1,5 @@
-// Enhanced background.js using Odoo JSON-2 API (Odoo 19+ ONLY)
-// Compatible with both Odoo Community Edition (self-hosted) and Odoo.com
-// Requires Odoo 19.0 or higher
-// ✅ NO CONTACT MANAGEMENT - Contacts stored as text only
+// Enhanced background.js with Contact Search & Manual Selection
+// Odoo JSON-2 API (Odoo 19+ ONLY)
 
 class OdooJSON2Client {
   constructor(config) {
@@ -194,7 +192,148 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a helpdesk ticket - NO CONTACT MANAGEMENT
+   * 🆕 Search contacts by query string
+   */
+  async searchContacts(query, limit = 10) {
+    try {
+      if (!this.database) {
+        this.database = await this.getDatabaseName();
+      }
+      
+      // Build search domain - search in name, phone, email
+      const domain = [
+        '|', '|',
+        ['name', 'ilike', query],
+        ['phone', 'ilike', query],
+        ['email', 'ilike', query]
+      ];
+      
+      // Search for contacts
+      const partnerIds = await this.callMethod('res.partner', 'search', {
+        domain: domain,
+        limit: limit
+      });
+      
+      if (!partnerIds || partnerIds.length === 0) {
+        return [];
+      }
+      
+      // Read contact details
+      const partners = await this.callMethod('res.partner', 'read', {
+        ids: partnerIds,
+        fields: ['id', 'name', 'phone', 'email', 'is_company', 'image_128']
+      });
+      
+      return partners;
+      
+    } catch (error) {
+      console.error('Error searching contacts:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * 🆕 Get contact suggestions based on WhatsApp data
+   */
+  async suggestContacts(contactName, contactNumber) {
+    try {
+      if (!this.database) {
+        this.database = await this.getDatabaseName();
+      }
+      
+      const suggestions = [];
+      
+      // Try phone match first (most reliable)
+      if (contactNumber) {
+        const phoneDigits = contactNumber.replace(/\D/g, '');
+        const phoneMatches = await this.callMethod('res.partner', 'search', {
+          domain: [['phone', 'ilike', phoneDigits.slice(-10)]],
+          limit: 3
+        });
+        
+        if (phoneMatches && phoneMatches.length > 0) {
+          const phoneContacts = await this.callMethod('res.partner', 'read', {
+            ids: phoneMatches,
+            fields: ['id', 'name', 'phone', 'email', 'image_128']
+          });
+          suggestions.push(...phoneContacts);
+        }
+      }
+      
+      // Try name match if no phone matches
+      if (suggestions.length === 0 && contactName) {
+        const nameMatches = await this.callMethod('res.partner', 'search', {
+          domain: [['name', 'ilike', contactName]],
+          limit: 5
+        });
+        
+        if (nameMatches && nameMatches.length > 0) {
+          const nameContacts = await this.callMethod('res.partner', 'read', {
+            ids: nameMatches,
+            fields: ['id', 'name', 'phone', 'email', 'image_128']
+          });
+          suggestions.push(...nameContacts);
+        }
+      }
+      
+      // Remove duplicates
+      const uniqueSuggestions = suggestions.filter((contact, index, self) =>
+        index === self.findIndex(c => c.id === contact.id)
+      );
+      
+      return uniqueSuggestions;
+      
+    } catch (error) {
+      console.error('Error getting contact suggestions:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * 🆕 Create new contact
+   */
+  async createContact(contactData) {
+    try {
+      if (!this.database) {
+        this.database = await this.getDatabaseName();
+      }
+      
+      const partnerValues = {
+        name: contactData.name,
+        phone: contactData.phone || '',
+        email: contactData.email || '',
+        is_company: false,
+        comment: contactData.comment || 'Created from WhatsApp integration'
+      };
+      
+      const partnerId = await this.callMethod('res.partner', 'create', {
+        vals_list: [partnerValues]
+      });
+      
+      const actualPartnerId = Array.isArray(partnerId) ? partnerId[0] : partnerId;
+      
+      // Read back the created contact
+      const newContact = await this.callMethod('res.partner', 'read', {
+        ids: [actualPartnerId],
+        fields: ['id', 'name', 'phone', 'email', 'image_128']
+      });
+      
+      return {
+        success: true,
+        contact: newContact[0]
+      };
+      
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  /**
+   * Create a helpdesk ticket with optional contact
    */
   async createTicket(conversationData) {
     try {
@@ -204,17 +343,23 @@ class OdooJSON2Client {
       
       const ticketTitle = conversationData.summary || `WhatsApp: ${conversationData.contactName}`;
       
-      // Store contact info in description instead of linking to res.partner
-      const descriptionWithContact = `Contact: ${conversationData.contactName}\n` +
-        (conversationData.contactNumber ? `Phone: ${conversationData.contactNumber}\n\n` : '\n') +
-        conversationData.description;
-      
+      // Build ticket values
       const ticketValues = {
         name: ticketTitle,
-        description: descriptionWithContact,
+        description: conversationData.description,
         priority: conversationData.priority || '1',
         stage_id: 1
       };
+      
+      // Add contact if provided
+      if (conversationData.partner_id) {
+        ticketValues.partner_id = conversationData.partner_id;
+      } else {
+        // Store contact info in description if no contact linked
+        ticketValues.description = `Contact: ${conversationData.contactName}\n` +
+          (conversationData.contactNumber ? `Phone: ${conversationData.contactNumber}\n\n` : '\n') +
+          conversationData.description;
+      }
       
       const ticketId = await this.callMethod('helpdesk.ticket', 'create', {
         vals_list: [ticketValues]
@@ -228,7 +373,8 @@ class OdooJSON2Client {
       
       return {
         success: true,
-        ticketId: actualTicketId
+        ticketId: actualTicketId,
+        partnerId: conversationData.partner_id || null
       };
       
     } catch (error) {
@@ -241,7 +387,7 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a project task - NO CONTACT MANAGEMENT
+   * Create a project task with optional contact
    */
   async createTask(taskData) {
     try {
@@ -251,17 +397,22 @@ class OdooJSON2Client {
       
       const projectId = await this.getDefaultProject();
       
-      // Store contact info in description
-      const descriptionWithContact = `Contact: ${taskData.partner_name || 'Unknown'}\n\n` +
-        taskData.description;
-      
       const taskValues = {
         name: taskData.name,
-        description: descriptionWithContact,
+        description: taskData.description,
         date_deadline: taskData.date_deadline ? this.formatDate(taskData.date_deadline) : false,
         priority: taskData.priority || '1',
         project_id: projectId
       };
+      
+      // Add contact if provided
+      if (taskData.partner_id) {
+        taskValues.partner_id = taskData.partner_id;
+      } else {
+        // Store contact info in description
+        taskValues.description = `Contact: ${taskData.partner_name || 'Unknown'}\n\n` +
+          taskData.description;
+      }
       
       const taskId = await this.callMethod('project.task', 'create', {
         vals_list: [taskValues]
@@ -275,7 +426,8 @@ class OdooJSON2Client {
       
       return {
         success: true,
-        taskId: actualTaskId
+        taskId: actualTaskId,
+        partnerId: taskData.partner_id || null
       };
       
     } catch (error) {
@@ -288,7 +440,7 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a CRM lead - Already has no contact management
+   * Create a CRM lead with optional contact
    */
   async createLead(leadData) {
     try {
@@ -309,6 +461,11 @@ class OdooJSON2Client {
         team_id: teamId
       };
       
+      // Add contact if provided
+      if (leadData.partner_id) {
+        leadValues.partner_id = leadData.partner_id;
+      }
+      
       const leadId = await this.callMethod('crm.lead', 'create', {
         vals_list: [leadValues]
       });
@@ -321,7 +478,8 @@ class OdooJSON2Client {
       
       return {
         success: true,
-        leadId: actualLeadId
+        leadId: actualLeadId,
+        partnerId: leadData.partner_id || null
       };
       
     } catch (error) {
@@ -525,43 +683,72 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+  
+  // 🆕 Contact search handler
+  if (message.action === 'searchContacts') {
+    handleSearchContacts(message.config, message.query)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Search contacts error:', error);
+        sendResponse({
+          success: false,
+          error: error.message,
+          contacts: []
+        });
+      });
+    return true;
+  }
+  
+  // 🆕 Contact suggestions handler
+  if (message.action === 'suggestContacts') {
+    handleSuggestContacts(message.config, message.contactName, message.contactNumber)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Suggest contacts error:', error);
+        sendResponse({
+          success: false,
+          error: error.message,
+          contacts: []
+        });
+      });
+    return true;
+  }
+  
+  // 🆕 Create contact handler
+  if (message.action === 'createContact') {
+    handleCreateContact(message.config, message.contactData)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Create contact error:', error);
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      });
+    return true;
+  }
 });
 
 async function handleCreateTicket(config, conversationData) {
-  console.log('Handling create ticket with JSON-2 API (NO CONTACT MANAGEMENT)');
-  console.log('Conversation data:', {
-    ...conversationData,
-    messages: conversationData.messages ? `${conversationData.messages.length} messages` : 'no messages'
-  });
-  
+  console.log('Handling create ticket');
   const odooClient = new OdooJSON2Client(config);
   return await odooClient.createTicket(conversationData);
 }
 
 async function handleCreateTask(config, taskData) {
-  console.log('Handling create task with JSON-2 API (NO CONTACT MANAGEMENT)');
-  console.log('Task data:', {
-    ...taskData,
-    messages: taskData.messages ? `${taskData.messages.length} messages` : 'no messages'
-  });
-  
+  console.log('Handling create task');
   const odooClient = new OdooJSON2Client(config);
   return await odooClient.createTask(taskData);
 }
 
 async function handleCreateLead(config, leadData) {
-  console.log('Handling create lead with JSON-2 API');
-  console.log('Lead data:', {
-    ...leadData,
-    messages: leadData.messages ? `${leadData.messages.length} messages` : 'no messages'
-  });
-  
+  console.log('Handling create lead');
   const odooClient = new OdooJSON2Client(config);
   return await odooClient.createLead(leadData);
 }
 
 async function testOdooConnection(config) {
-  console.log('Testing connection with JSON-2 API (Odoo 19+ required)');
+  console.log('Testing connection with JSON-2 API');
   
   try {
     const odooClient = new OdooJSON2Client(config);
@@ -578,6 +765,68 @@ async function testOdooConnection(config) {
     return {
       success: false,
       message: error.message
+    };
+  }
+}
+
+// 🆕 Handle contact search
+async function handleSearchContacts(config, query) {
+  console.log('Searching contacts:', query);
+  
+  try {
+    const odooClient = new OdooJSON2Client(config);
+    const contacts = await odooClient.searchContacts(query);
+    
+    return {
+      success: true,
+      contacts: contacts
+    };
+  } catch (error) {
+    console.error('Search contacts error:', error);
+    return {
+      success: false,
+      error: error.message,
+      contacts: []
+    };
+  }
+}
+
+// 🆕 Handle contact suggestions
+async function handleSuggestContacts(config, contactName, contactNumber) {
+  console.log('Getting contact suggestions for:', contactName, contactNumber);
+  
+  try {
+    const odooClient = new OdooJSON2Client(config);
+    const contacts = await odooClient.suggestContacts(contactName, contactNumber);
+    
+    return {
+      success: true,
+      contacts: contacts
+    };
+  } catch (error) {
+    console.error('Suggest contacts error:', error);
+    return {
+      success: false,
+      error: error.message,
+      contacts: []
+    };
+  }
+}
+
+// 🆕 Handle contact creation
+async function handleCreateContact(config, contactData) {
+  console.log('Creating new contact:', contactData.name);
+  
+  try {
+    const odooClient = new OdooJSON2Client(config);
+    const result = await odooClient.createContact(contactData);
+    
+    return result;
+  } catch (error) {
+    console.error('Create contact error:', error);
+    return {
+      success: false,
+      error: error.message
     };
   }
 }

@@ -77,6 +77,271 @@ class WhatsAppMessageTracker {
 
     style.textContent = `
       ${modernSVGStyles}
+
+      /* Contact Selector Styles */
+.odoo-contact-section {
+  margin: 20px 0;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.odoo-contact-label {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  gap: 6px;
+}
+
+.odoo-contact-search-wrapper {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.odoo-contact-search {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.odoo-contact-search:focus {
+  outline: none;
+  border-color: #25D366;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+}
+
+.odoo-contact-search-spinner {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.odoo-contact-suggestions,
+.odoo-contact-results {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f8f9fa;
+  margin-bottom: 12px;
+}
+
+.odoo-contact-suggestion-title {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.odoo-contact-loading {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
+
+.odoo-contact-item {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.odoo-contact-item:hover {
+  background: #fff;
+}
+
+.odoo-contact-item:last-child {
+  border-bottom: none;
+}
+
+.odoo-contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #25D366;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.odoo-contact-info {
+  flex: 1;
+}
+
+.odoo-contact-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.odoo-contact-details {
+  font-size: 12px;
+  color: #666;
+}
+
+.odoo-contact-selected {
+  padding: 12px;
+  background: #e8f5e9;
+  border: 2px solid #25D366;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.odoo-contact-selected-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.odoo-contact-selected-icon {
+  font-size: 24px;
+}
+
+.odoo-contact-selected-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.odoo-contact-selected-details {
+  font-size: 12px;
+  color: #666;
+}
+
+.odoo-contact-clear-btn {
+  background: none;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.odoo-contact-clear-btn:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.odoo-contact-quick-create {
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.odoo-contact-quick-create-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.odoo-contact-quick-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.odoo-contact-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.odoo-contact-quick-cancel,
+.odoo-contact-quick-save {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.odoo-contact-quick-cancel {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.odoo-contact-quick-cancel:hover {
+  background: #d0d0d0;
+}
+
+.odoo-contact-quick-save {
+  background: #25D366;
+  color: white;
+}
+
+.odoo-contact-quick-save:hover {
+  background: #1ea952;
+}
+
+.odoo-contact-skip {
+  font-size: 13px;
+  color: #666;
+  padding: 8px 0;
+}
+
+.odoo-contact-skip label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.odoo-contact-create-new-btn {
+  width: 100%;
+  padding: 10px;
+  background: #007AFF;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.odoo-contact-create-new-btn:hover {
+  background: #0056b3;
+}
+
+.odoo-contact-no-results {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
       .odoo-message-actions {
         position: absolute;
         right: -50px;
@@ -1242,6 +1507,9 @@ const titleData = await this.showTitleModal({
       if (!titleData) {
         return;
       }
+      if (titleData.partner_id) {
+  conversationData.partner_id = titleData.partner_id;
+}
       messageData.customTitle = titleData.title;
       messageData.titleOption = titleData.option;
       
@@ -1551,6 +1819,89 @@ const titleData = await this.showTitleModal({
           </div>
         </div>
 
+        <!-- 🆕 CONTACT SELECTOR SECTION -->
+<div class="odoo-contact-section">
+  <label class="odoo-contact-label">
+    <svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    Assign to Contact (Optional)
+  </label>
+  
+  <!-- Search Input -->
+  <div class="odoo-contact-search-wrapper">
+    <input type="text" 
+           class="odoo-contact-search" 
+           id="contact-search-input"
+           placeholder="Search contacts by name, phone, or email..."
+           autocomplete="off">
+    <div class="odoo-contact-search-spinner" id="contact-search-spinner" style="display: none;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+  
+  <!-- Suggestions from WhatsApp -->
+  <div class="odoo-contact-suggestions" id="contact-suggestions">
+    <div class="odoo-contact-suggestion-title">Suggested from WhatsApp:</div>
+    <div class="odoo-contact-loading">Loading suggestions...</div>
+  </div>
+  
+  <!-- Search Results -->
+  <div class="odoo-contact-results" id="contact-results" style="display: none;">
+    <!-- Results populated dynamically -->
+  </div>
+  
+  <!-- Selected Contact Display -->
+  <div class="odoo-contact-selected" id="contact-selected" style="display: none;">
+    <div class="odoo-contact-selected-info">
+      <span class="odoo-contact-selected-icon">👤</span>
+      <div>
+        <div class="odoo-contact-selected-name" id="selected-contact-name"></div>
+        <div class="odoo-contact-selected-details" id="selected-contact-details"></div>
+      </div>
+    </div>
+    <button class="odoo-contact-clear-btn" id="clear-contact-btn">
+      <svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+      Clear
+    </button>
+  </div>
+  
+  <!-- Quick Create Contact -->
+  <div class="odoo-contact-quick-create" id="contact-quick-create" style="display: none;">
+    <div class="odoo-contact-quick-create-title">Create New Contact</div>
+    <input type="text" 
+           class="odoo-contact-quick-input" 
+           id="new-contact-name"
+           placeholder="Contact Name"
+           value="">
+    <input type="text" 
+           class="odoo-contact-quick-input" 
+           id="new-contact-phone"
+           placeholder="Phone (optional)"
+           value="">
+    <input type="email" 
+           class="odoo-contact-quick-input" 
+           id="new-contact-email"
+           placeholder="Email (optional)">
+    <div class="odoo-contact-quick-actions">
+      <button class="odoo-contact-quick-cancel" id="cancel-create-contact">Cancel</button>
+      <button class="odoo-contact-quick-save" id="save-new-contact">Create Contact</button>
+    </div>
+  </div>
+  
+  <!-- No Contact Option -->
+  <div class="odoo-contact-skip">
+    <label>
+      <input type="checkbox" id="skip-contact-checkbox">
+      Skip contact assignment (not recommended)
+    </label>
+  </div>
+</div>
+
         <div class="odoo-title-buttons">
           <button class="odoo-title-btn secondary" data-action="cancel">Cancel</button>
           <button class="odoo-title-btn primary" data-action="create">Create ${type.charAt(0).toUpperCase() + type.slice(1)}</button>
@@ -1560,6 +1911,309 @@ const titleData = await this.showTitleModal({
       modal.appendChild(modalContent);
       document.body.appendChild(modal);
       
+      // Get references to contact elements
+const contactSearchInput = modalContent.querySelector('#contact-search-input');
+const contactSuggestions = modalContent.querySelector('#contact-suggestions');
+const contactResults = modalContent.querySelector('#contact-results');
+const contactSelected = modalContent.querySelector('#contact-selected');
+const clearContactBtn = modalContent.querySelector('#clear-contact-btn');
+const quickCreateSection = modalContent.querySelector('#contact-quick-create');
+const skipContactCheckbox = modalContent.querySelector('#skip-contact-checkbox');
+
+let selectedContact = null;
+let searchTimeout = null;
+
+// 🆕 Helper function: Load contact suggestions
+const loadContactSuggestions = async () => {
+  try {
+    const config = await this.getOdooConfig();
+    
+    const result = await this.sendToBackground({
+      action: 'suggestContacts',
+      config: config,
+      contactName: conversationData.contactName,
+      contactNumber: conversationData.contactNumber
+    });
+    
+    if (result.success && result.contacts && result.contacts.length > 0) {
+      displayContactSuggestions(result.contacts);
+    } else {
+      contactSuggestions.innerHTML = `
+        <div class="odoo-contact-suggestion-title">No matching contacts found</div>
+        <div class="odoo-contact-no-results">
+          No existing contacts match this WhatsApp conversation.
+          <button class="odoo-contact-create-new-btn" id="show-create-contact">
+            <svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Create New Contact
+          </button>
+        </div>
+      `;
+      
+      modalContent.querySelector('#show-create-contact')?.addEventListener('click', () => {
+        showQuickCreateForm();
+      });
+    }
+  } catch (error) {
+    console.error('Error loading suggestions:', error);
+    contactSuggestions.innerHTML = `
+      <div class="odoo-contact-loading">Error loading suggestions</div>
+    `;
+  }
+}
+
+// 🆕 Helper function: Display contact suggestions
+const displayContactSuggestions = (contacts) => {
+  let html = '<div class="odoo-contact-suggestion-title">Suggested from WhatsApp:</div>';
+  
+  contacts.forEach(contact => {
+    const initials = contact.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const details = [contact.phone, contact.email].filter(Boolean).join(' • ');
+    
+    html += `
+      <div class="odoo-contact-item" data-contact-id="${contact.id}">
+        <div class="odoo-contact-avatar">${initials}</div>
+        <div class="odoo-contact-info">
+          <div class="odoo-contact-name">${contact.name}</div>
+          ${details ? `<div class="odoo-contact-details">${details}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  html += `
+    <button class="odoo-contact-create-new-btn" id="show-create-contact">
+      <svg class="odoo-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Create New Contact
+    </button>
+  `;
+  
+  contactSuggestions.innerHTML = html;
+  
+  // Bind click events to contacts
+  contactSuggestions.querySelectorAll('.odoo-contact-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const contactId = parseInt(item.dataset.contactId);
+      const contact = contacts.find(c => c.id === contactId);
+      selectContact(contact);
+    });
+  });
+  
+  // Bind create new contact button
+  modalContent.querySelector('#show-create-contact')?.addEventListener('click', () => {
+    showQuickCreateForm();
+  });
+}
+
+// 🆕 Helper function: Search contacts
+const searchContacts = async (query) => {
+
+  try {
+    const config = await this.getOdooConfig();
+    
+    const result = await this.sendToBackground({
+      action: 'searchContacts',
+      config: config,
+      query: query
+    });
+    
+    modalContent.querySelector('#contact-search-spinner').style.display = 'none';
+    
+    if (result.success && result.contacts && result.contacts.length > 0) {
+      displaySearchResults(result.contacts);
+    } else {
+      contactResults.innerHTML = `
+        <div class="odoo-contact-no-results">
+          No contacts found for "${query}"
+          <button class="odoo-contact-create-new-btn" id="show-create-contact-search">
+            Create New Contact
+          </button>
+        </div>
+      `;
+      contactResults.style.display = 'block';
+      contactSuggestions.style.display = 'none';
+      
+      modalContent.querySelector('#show-create-contact-search')?.addEventListener('click', () => {
+        showQuickCreateForm();
+      });
+    }
+  } catch (error) {
+    console.error('Error searching contacts:', error);
+    modalContent.querySelector('#contact-search-spinner').style.display = 'none';
+  }
+}
+
+// 🆕 Helper function: Display search results
+const displaySearchResults = (contacts) => {
+  let html = '';
+  
+  contacts.forEach(contact => {
+    const initials = contact.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const details = [contact.phone, contact.email].filter(Boolean).join(' • ');
+    
+    html += `
+      <div class="odoo-contact-item" data-contact-id="${contact.id}">
+        <div class="odoo-contact-avatar">${initials}</div>
+        <div class="odoo-contact-info">
+          <div class="odoo-contact-name">${contact.name}</div>
+          ${details ? `<div class="odoo-contact-details">${details}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  contactResults.innerHTML = html;
+  contactResults.style.display = 'block';
+  contactSuggestions.style.display = 'none';
+  
+  // Bind click events
+  contactResults.querySelectorAll('.odoo-contact-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const contactId = parseInt(item.dataset.contactId);
+      const contact = contacts.find(c => c.id === contactId);
+      selectContact(contact);
+    });
+  });
+}
+
+// 🆕 Helper function: Select a contact
+const selectContact = (contact) => {
+  selectedContact = contact;
+  
+  const details = [contact.phone, contact.email].filter(Boolean).join(' • ');
+  
+  modalContent.querySelector('#selected-contact-name').textContent = contact.name;
+  modalContent.querySelector('#selected-contact-details').textContent = details;
+  
+  contactSelected.style.display = 'flex';
+  contactSearchInput.disabled = true;
+  contactSuggestions.style.display = 'none';
+  contactResults.style.display = 'none';
+  contactSearchInput.value = '';
+  skipContactCheckbox.checked = false;
+}
+
+// 🆕 Helper function: Show quick create form
+const showQuickCreateForm = () => {
+  // Pre-fill with WhatsApp data
+  modalContent.querySelector('#new-contact-name').value = conversationData.contactName || '';
+  modalContent.querySelector('#new-contact-phone').value = conversationData.contactNumber || '';
+  
+  quickCreateSection.style.display = 'block';
+  contactSuggestions.style.display = 'none';
+  contactResults.style.display = 'none';
+  
+  // Bind cancel button
+  modalContent.querySelector('#cancel-create-contact').addEventListener('click', () => {
+    quickCreateSection.style.display = 'none';
+    contactSuggestions.style.display = 'block';
+  });
+  
+  // Bind save button
+  modalContent.querySelector('#save-new-contact').addEventListener('click', async () => {
+    await createNewContact();
+  });
+}
+
+// 🆕 Helper function: Create new contact
+const createNewContact = async () => {
+  const name = modalContent.querySelector('#new-contact-name').value.trim();
+  const phone = modalContent.querySelector('#new-contact-phone').value.trim();
+  const email = modalContent.querySelector('#new-contact-email').value.trim();
+  
+  if (!name) {
+    alert('Contact name is required');
+    return;
+  }
+  
+  try {
+    const saveBtn = modalContent.querySelector('#save-new-contact');
+    saveBtn.textContent = 'Creating...';
+    saveBtn.disabled = true;
+    
+    const config = await this.getOdooConfig();
+    
+    const result = await this.sendToBackground({
+      action: 'createContact',
+      config: config,
+      contactData: {
+        name: name,
+        phone: phone,
+        email: email,
+        comment: `Created from WhatsApp: ${conversationData.contactName}`
+      }
+    });
+    
+    if (result.success) {
+      selectContact(result.contact);
+      quickCreateSection.style.display = 'none';
+    } else {
+      alert('Error creating contact: ' + result.error);
+    }
+    
+    saveBtn.textContent = 'Create Contact';
+    saveBtn.disabled = false;
+    
+  } catch (error) {
+    console.error('Error creating contact:', error);
+    alert('Error creating contact: ' + error.message);
+  }
+}
+
+// 🆕 Load contact suggestions on modal open
+loadContactSuggestions();
+
+
+// 🆕 Search contacts as user types
+contactSearchInput.addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const query = e.target.value.trim();
+  
+  if (query.length < 2) {
+    contactResults.style.display = 'none';
+    contactSuggestions.style.display = 'block';
+    return;
+  }
+  
+  // Show spinner
+  modalContent.querySelector('#contact-search-spinner').style.display = 'block';
+  
+  searchTimeout = setTimeout(() => {
+    searchContacts(query);
+  }, 300); // Debounce 300ms
+});
+
+// 🆕 Clear selected contact
+clearContactBtn.addEventListener('click', () => {
+  selectedContact = null;
+  contactSelected.style.display = 'none';
+  contactSearchInput.value = '';
+  contactSearchInput.disabled = false;
+  skipContactCheckbox.checked = false;
+});
+
+// 🆕 Skip contact checkbox
+skipContactCheckbox.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    selectedContact = null;
+    contactSelected.style.display = 'none';
+    contactSearchInput.disabled = true;
+    contactSuggestions.style.display = 'none';
+    contactResults.style.display = 'none';
+  } else {
+    contactSearchInput.disabled = false;
+    contactSuggestions.style.display = 'block';
+  }
+});
+
+
+
+
       let selectedPriority = '0'; // Default to no priority
       const priorityStars = modalContent.querySelectorAll('.priority-star');
       const priorityDescription = modalContent.querySelector('#priority-description');
@@ -1647,18 +2301,20 @@ const titleData = await this.showTitleModal({
       validateTitle();
       
       createBtn.addEventListener('click', () => {
-        const title = titleInput.value.trim();
-        const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
-        
-        if (title && title.length >= 3) {
-          modal.remove();
-          resolve({
-            title: title,
-            option: selectedOption,
-            priority: selectedPriority // Pass the final priority value
-          });
-        }
-      });
+  const title = titleInput.value.trim();
+  const selectedOption = modalContent.querySelector('input[name="titleOption"]:checked').value;
+  
+  if (title && title.length >= 3) {
+    modal.remove();
+    resolve({
+      title: title,
+      option: selectedOption,
+      priority: selectedPriority,
+      partner_id: selectedContact ? selectedContact.id : null,  // 🆕 Add contact ID
+      skipContact: skipContactCheckbox.checked  // 🆕 Add skip flag
+    });
+  }
+});
       
       cancelBtn.addEventListener('click', () => {
         modal.remove();
