@@ -1,10 +1,11 @@
 // Enhanced background.js using Odoo JSON-2 API (Odoo 19+ ONLY)
 // Compatible with both Odoo Community Edition (self-hosted) and Odoo.com
 // Requires Odoo 19.0 or higher
+// ✅ NO CONTACT MANAGEMENT - Contacts stored as text only
 
 class OdooJSON2Client {
   constructor(config) {
-    this.url = config.url.replace(/\/$/, ''); // Remove trailing slash
+    this.url = config.url.replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.username = config.username;
     this.database = null;
@@ -17,9 +18,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Verify Odoo version is 19 or higher
-   */
   async verifyOdooVersion() {
     try {
       const versionUrl = `${this.url}/web/version`;
@@ -60,14 +58,10 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Get database name - works for both Community Edition and Odoo.com
-   */
   async getDatabaseName() {
     const urlParts = new URL(this.url);
     const hostname = urlParts.hostname;
     
-    // For *.odoo.com URLs, extract subdomain as database
     if (hostname.includes('.odoo.com')) {
       const parts = hostname.split('.');
       let subdomain;
@@ -80,7 +74,6 @@ class OdooJSON2Client {
       return subdomain;
     }
     
-    // For self-hosted (Community Edition), try to get database list
     try {
       const dbListUrl = `${this.url}/web/database/list`;
       const response = await fetch(dbListUrl, {
@@ -108,14 +101,10 @@ class OdooJSON2Client {
       this.log('Database list query failed:', error);
     }
     
-    // Fallback: return null (single database mode - header not needed)
     this.log('ℹ️ Using single database mode');
     return null;
   }
   
-  /**
-   * Make a JSON-2 API call
-   */
   async callMethod(model, method, params = {}) {
     const endpoint = `${this.url}/json/2/${model}/${method}`;
     
@@ -125,7 +114,6 @@ class OdooJSON2Client {
       'User-Agent': 'WhatsApp-Odoo-Integration/2.0'
     };
     
-    // Add database header if needed (for multi-database setups)
     if (this.database) {
       headers['X-Odoo-Database'] = this.database;
     }
@@ -155,14 +143,10 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Test connection - verifies version, database, and API key
-   */
   async testConnection() {
     try {
       this.log('🔍 Testing connection...');
       
-      // Step 1: Verify Odoo version
       const versionCheck = await this.verifyOdooVersion();
       if (!versionCheck.supported) {
         return {
@@ -171,11 +155,9 @@ class OdooJSON2Client {
         };
       }
       
-      // Step 2: Get database name
       this.database = await this.getDatabaseName();
       this.log('📊 Database:', this.database || 'single-db mode');
       
-      // Step 3: Test API key by getting current user context
       try {
         const userContext = await this.callMethod('res.users', 'context_get', {});
         
@@ -193,7 +175,6 @@ class OdooJSON2Client {
           database: this.database
         };
       } catch (apiError) {
-        // Provide specific error message for API key issues
         if (apiError.message.includes('Invalid apikey') || apiError.message.includes('401')) {
           return {
             success: false,
@@ -213,46 +194,41 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a helpdesk ticket
+   * Create a helpdesk ticket - NO CONTACT MANAGEMENT
    */
   async createTicket(conversationData) {
     try {
-      // Ensure database is set
       if (!this.database) {
         this.database = await this.getDatabaseName();
       }
       
-      // Find or create partner
-      const partnerId = await this.findOrCreatePartner(conversationData);
-      
       const ticketTitle = conversationData.summary || `WhatsApp: ${conversationData.contactName}`;
       
-      // Create ticket data object
+      // Store contact info in description instead of linking to res.partner
+      const descriptionWithContact = `Contact: ${conversationData.contactName}\n` +
+        (conversationData.contactNumber ? `Phone: ${conversationData.contactNumber}\n\n` : '\n') +
+        conversationData.description;
+      
       const ticketValues = {
         name: ticketTitle,
-        description: conversationData.description,
-        partner_id: partnerId,
+        description: descriptionWithContact,
         priority: conversationData.priority || '1',
         stage_id: 1
       };
       
-      // Create ticket using JSON-2 API with vals_list
       const ticketId = await this.callMethod('helpdesk.ticket', 'create', {
         vals_list: [ticketValues]
       });
       
-      // Note: create returns a list of IDs when using vals_list
       const actualTicketId = Array.isArray(ticketId) ? ticketId[0] : ticketId;
       
-      // Log conversation if messages are provided
       if (conversationData.messages) {
         await this.logConversation(actualTicketId, conversationData, 'helpdesk.ticket');
       }
       
       return {
         success: true,
-        ticketId: actualTicketId,
-        partnerId: partnerId
+        ticketId: actualTicketId
       };
       
     } catch (error) {
@@ -265,7 +241,7 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a project task
+   * Create a project task - NO CONTACT MANAGEMENT
    */
   async createTask(taskData) {
     try {
@@ -273,15 +249,15 @@ class OdooJSON2Client {
         this.database = await this.getDatabaseName();
       }
       
-      const partnerId = await this.findOrCreatePartnerByName(taskData.partner_name);
-      
-      // Get or create default project
       const projectId = await this.getDefaultProject();
+      
+      // Store contact info in description
+      const descriptionWithContact = `Contact: ${taskData.partner_name || 'Unknown'}\n\n` +
+        taskData.description;
       
       const taskValues = {
         name: taskData.name,
-        description: taskData.description,
-        partner_id: partnerId,
+        description: descriptionWithContact,
         date_deadline: taskData.date_deadline ? this.formatDate(taskData.date_deadline) : false,
         priority: taskData.priority || '1',
         project_id: projectId
@@ -293,15 +269,13 @@ class OdooJSON2Client {
       
       const actualTaskId = Array.isArray(taskId) ? taskId[0] : taskId;
       
-      // Log conversation for multi-message tasks
       if (taskData.messages) {
         await this.logConversation(actualTaskId, taskData, 'project.task');
       }
       
       return {
         success: true,
-        taskId: actualTaskId,
-        partnerId: partnerId
+        taskId: actualTaskId
       };
       
     } catch (error) {
@@ -314,7 +288,7 @@ class OdooJSON2Client {
   }
   
   /**
-   * Create a CRM lead
+   * Create a CRM lead - Already has no contact management
    */
   async createLead(leadData) {
     try {
@@ -322,10 +296,7 @@ class OdooJSON2Client {
         this.database = await this.getDatabaseName();
       }
       
-      // Get source ID
       const sourceId = await this.getOrCreateSource(leadData.source_id || 'WhatsApp');
-      
-      // Get default sales team
       const teamId = await this.getDefaultSalesTeam();
       
       const leadValues = {
@@ -344,7 +315,6 @@ class OdooJSON2Client {
       
       const actualLeadId = Array.isArray(leadId) ? leadId[0] : leadId;
       
-      // Log conversation for multi-message leads
       if (leadData.messages) {
         await this.logConversation(actualLeadId, leadData, 'crm.lead');
       }
@@ -363,76 +333,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Find or create a partner (contact)
-   */
-  async findOrCreatePartner(conversationData) {
-    // Search for existing partner
-    const domain = [
-      '|',
-      ['phone', 'like', conversationData.contactNumber || ''],
-      ['name', '=', conversationData.contactName]
-    ];
-    
-    const existingPartners = await this.callMethod('res.partner', 'search', {
-      domain: domain,
-      limit: 1
-    });
-    
-    if (existingPartners && existingPartners.length > 0) {
-      return existingPartners[0];
-    }
-    
-    // Create new partner
-    const partnerValues = {
-      name: conversationData.contactName,
-      phone: conversationData.contactNumber || '',
-      is_company: false,
-      customer_rank: 1,
-      comment: 'Created from WhatsApp integration'
-    };
-    
-    const partnerId = await this.callMethod('res.partner', 'create', {
-      vals_list: [partnerValues]
-    });
-    
-    return Array.isArray(partnerId) ? partnerId[0] : partnerId;
-  }
-  
-  /**
-   * Find or create partner by name only
-   */
-  async findOrCreatePartnerByName(partnerName) {
-    if (!partnerName) {
-      partnerName = 'WhatsApp Contact';
-    }
-    
-    const existingPartners = await this.callMethod('res.partner', 'search', {
-      domain: [['name', '=', partnerName]],
-      limit: 1
-    });
-    
-    if (existingPartners && existingPartners.length > 0) {
-      return existingPartners[0];
-    }
-    
-    const partnerValues = {
-      name: partnerName,
-      is_company: false,
-      customer_rank: 1,
-      comment: 'Created from WhatsApp integration'
-    };
-    
-    const partnerId = await this.callMethod('res.partner', 'create', {
-      vals_list: [partnerValues]
-    });
-    
-    return Array.isArray(partnerId) ? partnerId[0] : partnerId;
-  }
-  
-  /**
-   * Get or create default project for WhatsApp tasks
-   */
   async getDefaultProject() {
     try {
       const existingProjects = await this.callMethod('project.project', 'search', {
@@ -462,9 +362,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Get default sales team
-   */
   async getDefaultSalesTeam() {
     try {
       const teams = await this.callMethod('crm.team', 'search', {
@@ -479,9 +376,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Get or create UTM source
-   */
   async getOrCreateSource(sourceName) {
     try {
       const existingSources = await this.callMethod('utm.source', 'search', {
@@ -507,9 +401,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Format date for Odoo
-   */
   formatDate(date) {
     if (!(date instanceof Date)) {
       date = new Date(date);
@@ -517,9 +408,6 @@ class OdooJSON2Client {
     return date.toISOString().split('T')[0];
   }
   
-  /**
-   * Log conversation as mail message
-   */
   async logConversation(recordId, recordData, modelName) {
     try {
       let messageBody;
@@ -548,9 +436,6 @@ class OdooJSON2Client {
     }
   }
   
-  /**
-   * Get display name for model
-   */
   getModelDisplayName(modelName) {
     const modelNames = {
       'helpdesk.ticket': 'Ticket',
@@ -560,9 +445,6 @@ class OdooJSON2Client {
     return modelNames[modelName] || 'Record';
   }
   
-  /**
-   * Format multiple messages for logging
-   */
   formatConversationMessages(messages) {
     let formattedMessages = '<h3>WhatsApp Conversation History</h3>\n';
     
@@ -578,9 +460,6 @@ class OdooJSON2Client {
     return formattedMessages;
   }
   
-  /**
-   * Escape HTML special characters
-   */
   escapeHtml(text) {
     return String(text)
       .replace(/&/g, '&amp;')
@@ -648,9 +527,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Handler functions
 async function handleCreateTicket(config, conversationData) {
-  console.log('Handling create ticket with JSON-2 API');
+  console.log('Handling create ticket with JSON-2 API (NO CONTACT MANAGEMENT)');
   console.log('Conversation data:', {
     ...conversationData,
     messages: conversationData.messages ? `${conversationData.messages.length} messages` : 'no messages'
@@ -661,7 +539,7 @@ async function handleCreateTicket(config, conversationData) {
 }
 
 async function handleCreateTask(config, taskData) {
-  console.log('Handling create task with JSON-2 API');
+  console.log('Handling create task with JSON-2 API (NO CONTACT MANAGEMENT)');
   console.log('Task data:', {
     ...taskData,
     messages: taskData.messages ? `${taskData.messages.length} messages` : 'no messages'
