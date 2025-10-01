@@ -6,23 +6,56 @@
   
   class MessageExtractor {
     static extractMessageData(messageContainer) {
-      const messageTextElement = messageContainer.querySelector('._ao3e.selectable-text.copyable-text span') ||
-                                messageContainer.querySelector('.copyable-text ._ao3e') ||
-                                messageContainer.querySelector('.selectable-text');
-      
-      const messageText = messageTextElement?.textContent?.trim() || '';
+      const messageTextElement = 
+    
+    messageContainer.querySelector('.selectable-text.copyable-text span') ||
+    messageContainer.querySelector('.copyable-text span.selectable-text') ||
+    // Try parent elements
+    messageContainer.querySelector('.copyable-text .selectable-text') ||
+    // Last resort - any copyable text
+    messageContainer.querySelector('.copyable-text span') ||
+    messageContainer.querySelector('.selectable-text');
+  
+  const messageText = messageTextElement?.textContent?.trim() || '';
+  
       
       const timeElements = messageContainer.querySelectorAll('.x1c4vz4f.x2lah0s');
-      let timestamp = new Date();
-      
-      for (const timeEl of timeElements) {
-        const timeText = timeEl.textContent?.trim();
-        if (timeText && timeText.match(/\d{1,2}:\d{2}\s*(am|pm)/i)) {
-          timestamp = this.parseWhatsAppTime(timeText);
-          break;
-        }
+      // IMPROVED TIMESTAMP EXTRACTION
+  let timestamp = new Date();
+  let timeText = null;
+  
+  // Priority 1: Check data attribute (most reliable)
+  const dataElement = messageContainer.querySelector('[data-pre-plain-text]');
+  if (dataElement) {
+    const dataText = dataElement.getAttribute('data-pre-plain-text');
+    const timeMatch = dataText?.match(/\[(\d{1,2}:\d{2}\s*(?:am|pm)?)/i);
+    if (timeMatch) {
+      timeText = timeMatch[1];
+    }
+  }
+  
+  // Priority 2: Known selector (if still works)
+  if (!timeText) {
+    const knownTimeEl = messageContainer.querySelector('.x1c4vz4f.x2lah0s');
+    timeText = knownTimeEl?.textContent?.trim();
+  }
+  
+  // Priority 3: Search all spans for time pattern
+  if (!timeText || !timeText.match(/\d{1,2}:\d{2}/)) {
+    const allSpans = messageContainer.querySelectorAll('span');
+    for (const span of allSpans) {
+      const text = span.textContent?.trim();
+      if (text && text.match(/^\d{1,2}:\d{2}\s*(am|pm)?$/i)) {
+        timeText = text;
+        break;
       }
-      
+    }
+  }
+  
+  // Parse the time if found
+  if (timeText && timeText.match(/\d{1,2}:\d{2}/)) {
+    timestamp = this.parseWhatsAppTime(timeText);
+  }
       const hasImage = messageContainer.querySelector('img[alt]');
       const hasDocument = messageContainer.querySelector('[data-icon]');
       const hasQuote = messageContainer.querySelector('._aju2');
