@@ -101,11 +101,69 @@ class WhatsAppMessageTracker {
       .odoo-selection-message {
         background: none;
         padding: 10px 12px;
+        padding-right: 40px; /* CHANGED: Make room for X button */
         margin-bottom: 0;
         border-bottom: 1px solid #f0f0f0;
         font-size: 13px;
         line-height: 1.4;
         transition: background-color 0.1s;
+        position: relative; /* CHANGED: For absolute positioning of X button */
+      }
+
+      .odoo-message-remove-btn {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1;
+        transition: all 0.2s ease;
+        opacity: 0.7;
+      }
+
+      .odoo-message-remove-btn:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+        background: #c82333;
+      }
+
+      .odoo-message-remove-btn:active {
+        transform: translateY(-50%) scale(0.95);
+      }
+
+      .odoo-message-deselecting {
+        animation: deselectPulse 0.3s ease-out;
+      }
+      
+      @keyframes deselectPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(0.98); background: rgba(220, 53, 69, 0.1) !important; }
+        100% { transform: scale(1); }
+      }
+      
+      .odoo-selection-empty {
+        text-align: center;
+        color: #666;
+        font-size: 13px;
+        margin: 20px 0;
+        padding: 20px;
+      }
+      
+      .odoo-selection-empty-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+        opacity: 0.5;
       }
 
       .odoo-selection-message:nth-child(even) {
@@ -684,9 +742,13 @@ class WhatsAppMessageTracker {
         </div>
       
       <div class="odoo-selection-messages" id="odoo-selected-messages">
-        <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
-          Click messages to select them, then choose an action below
-        </p>
+        <div class="odoo-selection-empty">
+          <div class="odoo-selection-empty-icon">💬</div>
+          <p>Click messages to select them, then choose an action below</p>
+          <p style="font-size: 11px; color: #999; margin-top: 8px;">
+            Tip: Click a selected message again to deselect it
+          </p>
+        </div>
       </div>
       
       <div class="odoo-selection-actions">
@@ -747,29 +809,31 @@ class WhatsAppMessageTracker {
   }
 
   processNewMessages() {
-    // UPDATED selector to use new marker class
-    const messageContainers = document.querySelectorAll('div[role="row"]:not(.odoo-processed)');
-    
-    let processedCount = 0;
-    
-    messageContainers.forEach((container) => {
-      if (this.isMessageContainer(container)) {
-        this.addMessageActions(container); // Now just adds marker
-        container.classList.add('odoo-processed');
-        processedCount++;
-        
+  const messageContainers = document.querySelectorAll('div[role="row"]:not(.odoo-processed)');
+  
+  let processedCount = 0;
+  
+  messageContainers.forEach((container) => {
+    if (this.isMessageContainer(container)) {
+      this.addMessageActions(container);
+      container.classList.add('odoo-processed');
+      processedCount++;
+      
+      // FIXED: Only add listener if not already added
+      if (!container.hasAttribute('data-odoo-listener')) {
+        container.setAttribute('data-odoo-listener', 'true');
         container.addEventListener('click', (e) => {
-          // REMOVED: if (this.selectionMode) check
           e.stopPropagation();
           this.toggleMessageSelection(container);
         });
       }
-    });
-    
-    if (processedCount > 0) {
-      console.log(`Processed ${processedCount} message containers`);
     }
+  });
+  
+  if (processedCount > 0) {
+    console.log(`Processed ${processedCount} message containers`);
   }
+}
 
   isMessageContainer(container) {
   const hasMessageClass = container.querySelector('.message-in, .message-out');
@@ -798,19 +862,46 @@ class WhatsAppMessageTracker {
     const messageId = window.MessageExtractor.getMessageId(messageContainer);
     
     if (this.selectedMessages.has(messageId)) {
+      // DESELECTING: Add visual feedback
+      messageContainer.classList.add('odoo-message-deselecting');
+      setTimeout(() => {
+        messageContainer.classList.remove('odoo-message-deselecting');
+      }, 300);
+      
       this.selectedMessages.delete(messageId);
       messageContainer.classList.remove('odoo-message-selected');
+      
+      console.log(`Message deselected. Total: ${this.selectedMessages.size}`);
     } else {
+      // SELECTING
       const messageData = window.MessageExtractor.extractMessageData(messageContainer);
       this.selectedMessages.set(messageId, {
         container: messageContainer,
         data: messageData
       });
       messageContainer.classList.add('odoo-message-selected');
+      
+      console.log(`Message selected. Total: ${this.selectedMessages.size}`);
     }
     
     this.updateSelectionPanel();
   }
+
+
+
+  // NEW: Remove individual message from selection
+  removeMessageFromSelection(messageId) {
+    const message = this.selectedMessages.get(messageId);
+    if (message) {
+      message.container.classList.remove('odoo-message-selected');
+      this.selectedMessages.delete(messageId);
+      this.updateSelectionPanel();
+      
+      console.log(`Message removed. Total: ${this.selectedMessages.size}`);
+    }
+  }
+
+
 
   clearSelection() {
     document.querySelectorAll('.odoo-message-selected').forEach(msg => {
@@ -820,7 +911,7 @@ class WhatsAppMessageTracker {
     this.updateSelectionPanel();
   }
 
-  updateSelectionPanel() {
+ updateSelectionPanel() {
     const count = this.selectedMessages.size;
     const countElement = document.querySelector('.odoo-selection-count');
     const messagesContainer = document.getElementById('odoo-selected-messages');
@@ -828,7 +919,6 @@ class WhatsAppMessageTracker {
     const createTaskBtn = document.getElementById('odoo-create-task');
     const createLeadBtn = document.getElementById('odoo-create-lead');
     
-    // UPDATED: Count display text
     countElement.textContent = count === 0 ? 'No messages selected' : 
                                count === 1 ? '1 message selected' :
                                `${count} messages selected`;
@@ -838,31 +928,51 @@ class WhatsAppMessageTracker {
     createLeadBtn.disabled = count === 0;
     
     if (count === 0) {
+      // UPDATED: Better empty state
       messagesContainer.innerHTML = `
-        <p style="text-align: center; color: #666; font-size: 13px; margin: 20px 0;">
-          Click messages to select them, then choose an action below
-        </p>
+        <div class="odoo-selection-empty">
+          <div class="odoo-selection-empty-icon">💬</div>
+          <p>Click messages to select them, then choose an action below</p>
+          <p style="font-size: 11px; color: #999; margin-top: 8px;">
+            Tip: Click a selected message again to deselect it
+          </p>
+        </div>
       `;
     } else {
-      const messagesHtml = Array.from(this.selectedMessages.values())
-        .map(item => {
+      const messagesArray = Array.from(this.selectedMessages.entries());
+      
+      const messagesHtml = messagesArray
+        .map(([messageId, item]) => {
           const truncatedContent = item.data.content.length > 80 
             ? item.data.content.substring(0, 80) + '...' 
             : item.data.content;
           
           return `
-            <div class="odoo-selection-message">
+            <div class="odoo-selection-message" data-message-id="${messageId}">
               ${truncatedContent}
               <div class="odoo-selection-message-time">
                 ${item.data.timestamp.toLocaleTimeString()}
               </div>
+              <button class="odoo-message-remove-btn" 
+                      data-message-id="${messageId}"
+                      title="Remove this message">×</button>
             </div>
           `;
         }).join('');
       
       messagesContainer.innerHTML = messagesHtml;
+      
+      // NEW: Add click handlers for remove buttons
+      messagesContainer.querySelectorAll('.odoo-message-remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent triggering parent click
+          const messageId = btn.getAttribute('data-message-id');
+          this.removeMessageFromSelection(messageId);
+        });
+      });
     }
   }
+
 
   async createTicketFromSelection() {
     return this.createFromSelection('ticket');
