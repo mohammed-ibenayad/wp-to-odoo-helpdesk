@@ -248,16 +248,36 @@ async suggestContacts(contactName, contactNumber) {
     
     const suggestions = [];
     
-    // Check if contactName is actually a phone number
+    // Check if we have any valid input
+    if (!contactName && !contactNumber) {
+      this.log('No search criteria provided');
+      return { success: true, contacts: [] };
+    }
+    
+    // Normalize phone number if provided
+    let normalizedInput = contactName;
     const isPhoneNumber = contactName && /^\+?\d[\d\s-]+$/.test(contactName);
+    
+    if (isPhoneNumber) {
+      // Remove spaces and dashes: "+32 477 85 29 45" → "+32477852945"
+      normalizedInput = contactName.replace(/\s|-/g, '');
+      this.log('Normalized phone input:', normalizedInput);
+    }
     
     let searchDomain = [];
     
     if (isPhoneNumber) {
-      // Search by phone only
-      const phoneDigits = contactName.replace(/\D/g, '');
+      const phoneDigits = normalizedInput.replace(/^\+/, ''); // Remove + for alternate search
+      
       if (phoneDigits.length >= 8) {
-        searchDomain = [['phone', 'ilike', phoneDigits.slice(-10)]];
+        // Search with multiple patterns
+        searchDomain = [
+          '|', '|', '|',
+          ['phone', 'ilike', normalizedInput.slice(-10)],
+          ['phone', 'ilike', phoneDigits.slice(-10)],
+          ['phone', 'ilike', phoneDigits.slice(-9)],
+          ['mobile', 'ilike', phoneDigits.slice(-9)]
+        ];
       }
     } else {
       // Search by name
@@ -265,55 +285,77 @@ async suggestContacts(contactName, contactNumber) {
         searchDomain = [['name', 'ilike', contactName]];
       }
       
-      // Add phone search if available
-      if (contactNumber) {
-        const phoneDigits = contactNumber.replace(/\D/g, '');
+      // Add phone search if contact number provided AND not null
+      if (contactNumber && typeof contactNumber === 'string') {
+        const normalizedPhone = contactNumber.replace(/\s|-/g, '');
+        const phoneDigits = normalizedPhone.replace(/^\+/, '');
+        
         if (phoneDigits.length >= 8) {
           if (searchDomain.length > 0) {
-            searchDomain = ['|', searchDomain[0], ['phone', 'ilike', phoneDigits.slice(-10)]];
+            searchDomain = [
+              '|', '|', '|',
+              searchDomain[0],
+              ['phone', 'ilike', phoneDigits.slice(-10)],
+              ['phone', 'ilike', phoneDigits.slice(-9)],
+              ['mobile', 'ilike', phoneDigits.slice(-9)]
+            ];
           } else {
-            searchDomain = [['phone', 'ilike', phoneDigits.slice(-10)]];
+            searchDomain = [
+              '|', '|',
+              ['phone', 'ilike', phoneDigits.slice(-10)],
+              ['phone', 'ilike', phoneDigits.slice(-9)],
+              ['mobile', 'ilike', phoneDigits.slice(-9)]
+            ];
           }
         }
       }
     }
     
     if (searchDomain.length === 0) {
-      this.log('No valid search criteria');
-      return [];
+      this.log('No valid search criteria after parsing');
+      return { success: true, contacts: [] };
     }
     
-    this.log('Search domain:', searchDomain);
+    this.log('Search domain:', JSON.stringify(searchDomain));
     
     // Search for contacts
     const partnerIds = await this.callMethod('res.partner', 'search', {
       domain: searchDomain,
-      limit: 5
+      limit: 10
     });
+    
+    this.log('Found partner IDs:', partnerIds);
     
     if (partnerIds && partnerIds.length > 0) {
       const partners = await this.callMethod('res.partner', 'read', {
         ids: partnerIds,
-        fields: ['id', 'name', 'phone', 'email', 'image_128']
+        fields: ['id', 'name', 'phone', 'mobile', 'email', 'image_128']
       });
+      
+      // Prefer phone over mobile
+      partners.forEach(p => {
+        if (!p.phone && p.mobile) {
+          p.phone = p.mobile;
+        }
+      });
+      
       suggestions.push(...partners);
     }
     
     // Remove duplicates
     const uniqueSuggestions = suggestions.filter((contact, index, self) =>
-      index === self.findIndex(c => c.id === contact.id)
+      index === self.findIndex(c => c.id === c.id)
     );
     
     this.log(`Found ${uniqueSuggestions.length} unique contacts`);
     
-    return uniqueSuggestions;
+    return { success: true, contacts: uniqueSuggestions };
     
   } catch (error) {
     this.log('Error getting contact suggestions:', error);
-    return [];
+    return { success: false, error: error.message, contacts: [] };
   }
-}
-  
+} 
   /**
    * 🆕 Create new contact
    */
