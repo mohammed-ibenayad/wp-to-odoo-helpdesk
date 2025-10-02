@@ -235,59 +235,84 @@ class OdooJSON2Client {
   /**
    * 🆕 Get contact suggestions based on WhatsApp data
    */
-  async suggestContacts(contactName, contactNumber) {
-    try {
-      if (!this.database) {
-        this.database = await this.getDatabaseName();
+  /**
+ * Get contact suggestions based on WhatsApp data
+ */
+async suggestContacts(contactName, contactNumber) {
+  try {
+    if (!this.database) {
+      this.database = await this.getDatabaseName();
+    }
+    
+    this.log('Suggesting contacts for:', { contactName, contactNumber });
+    
+    const suggestions = [];
+    
+    // Check if contactName is actually a phone number
+    const isPhoneNumber = contactName && /^\+?\d[\d\s-]+$/.test(contactName);
+    
+    let searchDomain = [];
+    
+    if (isPhoneNumber) {
+      // Search by phone only
+      const phoneDigits = contactName.replace(/\D/g, '');
+      if (phoneDigits.length >= 8) {
+        searchDomain = [['phone', 'ilike', phoneDigits.slice(-10)]];
+      }
+    } else {
+      // Search by name
+      if (contactName && contactName !== 'Unknown Contact') {
+        searchDomain = [['name', 'ilike', contactName]];
       }
       
-      const suggestions = [];
-      
-      // Try phone match first (most reliable)
+      // Add phone search if available
       if (contactNumber) {
         const phoneDigits = contactNumber.replace(/\D/g, '');
-        const phoneMatches = await this.callMethod('res.partner', 'search', {
-          domain: [['phone', 'ilike', phoneDigits.slice(-10)]],
-          limit: 3
-        });
-        
-        if (phoneMatches && phoneMatches.length > 0) {
-          const phoneContacts = await this.callMethod('res.partner', 'read', {
-            ids: phoneMatches,
-            fields: ['id', 'name', 'phone', 'email', 'image_128']
-          });
-          suggestions.push(...phoneContacts);
+        if (phoneDigits.length >= 8) {
+          if (searchDomain.length > 0) {
+            searchDomain = ['|', searchDomain[0], ['phone', 'ilike', phoneDigits.slice(-10)]];
+          } else {
+            searchDomain = [['phone', 'ilike', phoneDigits.slice(-10)]];
+          }
         }
       }
-      
-      // Try name match if no phone matches
-      if (suggestions.length === 0 && contactName) {
-        const nameMatches = await this.callMethod('res.partner', 'search', {
-          domain: [['name', 'ilike', contactName]],
-          limit: 5
-        });
-        
-        if (nameMatches && nameMatches.length > 0) {
-          const nameContacts = await this.callMethod('res.partner', 'read', {
-            ids: nameMatches,
-            fields: ['id', 'name', 'phone', 'email', 'image_128']
-          });
-          suggestions.push(...nameContacts);
-        }
-      }
-      
-      // Remove duplicates
-      const uniqueSuggestions = suggestions.filter((contact, index, self) =>
-        index === self.findIndex(c => c.id === contact.id)
-      );
-      
-      return uniqueSuggestions;
-      
-    } catch (error) {
-      console.error('Error getting contact suggestions:', error);
+    }
+    
+    if (searchDomain.length === 0) {
+      this.log('No valid search criteria');
       return [];
     }
+    
+    this.log('Search domain:', searchDomain);
+    
+    // Search for contacts
+    const partnerIds = await this.callMethod('res.partner', 'search', {
+      domain: searchDomain,
+      limit: 5
+    });
+    
+    if (partnerIds && partnerIds.length > 0) {
+      const partners = await this.callMethod('res.partner', 'read', {
+        ids: partnerIds,
+        fields: ['id', 'name', 'phone', 'email', 'image_128']
+      });
+      suggestions.push(...partners);
+    }
+    
+    // Remove duplicates
+    const uniqueSuggestions = suggestions.filter((contact, index, self) =>
+      index === self.findIndex(c => c.id === contact.id)
+    );
+    
+    this.log(`Found ${uniqueSuggestions.length} unique contacts`);
+    
+    return uniqueSuggestions;
+    
+  } catch (error) {
+    this.log('Error getting contact suggestions:', error);
+    return [];
   }
+}
   
   /**
    * 🆕 Create new contact

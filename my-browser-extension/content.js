@@ -1104,29 +1104,61 @@ async showTitleModal(messageData, conversationData, type = 'ticket') {
     let searchTimeout = null;
 
     // Load contact suggestions
-    const loadContactSuggestions = async () => {
-      try {
-        const result = await window.BackgroundMessenger.suggestContacts(
-          conversationData.contactName,
-          conversationData.contactNumber
-        );
-        
-        if (result.success && result.contacts && result.contacts.length > 0) {
-          displayContactSuggestions(result.contacts);
-        } else {
-          contactSuggestions.innerHTML = `
-            <div class="odoo-contact-no-results">
-              No matching contacts found.
-              <button class="odoo-contact-create-new-btn" id="show-create-contact">+ Create New Contact</button>
-            </div>
-          `;
-          modalContent.querySelector('#show-create-contact')?.addEventListener('click', showQuickCreateForm);
+    // In showTitleModal, update loadContactSuggestions:
+const loadContactSuggestions = async () => {
+  try {
+    let result;
+    
+    if (conversationData.isGroup && conversationData.groupIdentifiers) {
+      // Search for ALL members in the group
+      const allContacts = [];
+      
+      // Search by each name
+      for (const name of conversationData.groupIdentifiers.names) {
+        const nameResult = await window.BackgroundMessenger.suggestContacts(name, null);
+        if (nameResult.success && nameResult.contacts) {
+          allContacts.push(...nameResult.contacts);
         }
-      } catch (error) {
-        console.error('Error loading suggestions:', error);
-        contactSuggestions.innerHTML = `<div class="odoo-contact-loading">Error loading suggestions</div>`;
       }
-    };
+      
+      // Search by each phone
+      for (const phone of conversationData.groupIdentifiers.phones) {
+        const phoneResult = await window.BackgroundMessenger.suggestContacts(null, phone);
+        if (phoneResult.success && phoneResult.contacts) {
+          allContacts.push(...phoneResult.contacts);
+        }
+      }
+      
+      // Remove duplicates
+      const unique = allContacts.filter((c, i, self) => 
+        i === self.findIndex(x => x.id === c.id)
+      );
+      
+      result = { success: true, contacts: unique };
+    } else {
+      // Single contact search
+      result = await window.BackgroundMessenger.suggestContacts(
+        conversationData.contactName,
+        conversationData.contactNumber
+      );
+    }
+    
+    if (result.success && result.contacts && result.contacts.length > 0) {
+      displayContactSuggestions(result.contacts);
+    } else {
+      contactSuggestions.innerHTML = `
+        <div class="odoo-contact-no-results">
+          No matching contacts found.
+          <button class="odoo-contact-create-new-btn" id="show-create-contact">+ Create New Contact</button>
+        </div>
+      `;
+      modalContent.querySelector('#show-create-contact')?.addEventListener('click', showQuickCreateForm);
+    }
+  } catch (error) {
+    console.error('Error loading suggestions:', error);
+    contactSuggestions.innerHTML = `<div class="odoo-contact-loading">Error loading suggestions</div>`;
+  }
+};
 
     const displayContactSuggestions = (contacts) => {
       let html = '<div class="odoo-contact-suggestion-title">Suggested from WhatsApp:</div>';

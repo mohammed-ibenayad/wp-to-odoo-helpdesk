@@ -61,15 +61,17 @@
       });
     }
     
-    static async suggestContacts(contactName, contactNumber) {
-      const config = await this.getOdooConfig();
-      return await this.sendToBackground({
-        action: 'suggestContacts',
-        config: config,
-        contactName: contactName,
-        contactNumber: contactNumber
-      });
-    }
+static async suggestContacts(contactName, contactNumber) {
+  const config = await this.getOdooConfig();
+  return await this.sendToBackground({
+    action: 'suggestContacts',
+    config: config,
+    contactName: contactName,
+    contactNumber: contactNumber
+  });
+}
+
+
     
     static async createContact(contactData) {
       const config = await this.getOdooConfig();
