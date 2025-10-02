@@ -1857,7 +1857,8 @@ const loadContactSuggestions = async () => {
       // Search by each phone
       for (const phone of phones) {
         if (phone && phone.trim()) {
-          const phoneResult = await window.BackgroundMessenger.suggestContacts(phone, null);
+          // CORRECTED: Pass null for the name and the phone number for the second argument
+          const phoneResult = await window.BackgroundMessenger.suggestContacts(null, phone); 
           if (phoneResult.success && phoneResult.contacts && Array.isArray(phoneResult.contacts)) {
             allContacts.push(...phoneResult.contacts);
           }

@@ -1,5 +1,5 @@
 // Enhanced background.js with Contact Search & Manual Selection
-// Odoo JSON-2 API (Odoo 19+ ONLY)
+// Odoo JSON-2 API (Odoo 19+ ONLY) 
 
 class OdooJSON2Client {
   constructor(config) {
@@ -248,103 +248,69 @@ async suggestContacts(contactName, contactNumber) {
     
     const suggestions = [];
     
-    // Check if we have any valid input
-    if (!contactName && !contactNumber) {
-      this.log('No search criteria provided');
-      return { success: true, contacts: [] };
-    }
-    
-    // Normalize phone number if provided
-    let normalizedInput = contactName;
-    const isPhoneNumber = contactName && /^\+?\d[\d\s-]+$/.test(contactName);
-    
-    if (isPhoneNumber) {
-      // Remove spaces and dashes: "+32 477 85 29 45" → "+32477852945"
-      normalizedInput = contactName.replace(/\s|-/g, '');
-      this.log('Normalized phone input:', normalizedInput);
-    }
-    
-    let searchDomain = [];
-    
-    if (isPhoneNumber) {
-      const phoneDigits = normalizedInput.replace(/^\+/, ''); // Remove + for alternate search
+    // Try phone match first (most reliable)
+    if (contactNumber) {
+      const phoneDigits = contactNumber.replace(/\D/g, '');
       
       if (phoneDigits.length >= 8) {
-        // Search with multiple patterns
-        searchDomain = [
-          '|', '|', '|',
-          ['phone', 'ilike', normalizedInput.slice(-10)],
-          ['phone', 'ilike', phoneDigits.slice(-10)],
-          ['phone', 'ilike', phoneDigits.slice(-9)],
-          ['mobile', 'ilike', phoneDigits.slice(-9)]
-        ];
+      // Use the last 9 digits of the phone number for a flexible search string
+      const searchString = phoneDigits.slice(-9);
+
+      // Define a broad search domain, mimicking the working manual search
+      const domain = [
+        '|', '|',
+        ['name', 'ilike', searchString],
+        ['phone', 'ilike', searchString],
+        ['email', 'ilike', searchString]
+      ];
+
+      // Search for partners using the broad domain
+      const phoneMatches = await this.callMethod('res.partner', 'search', {
+        domain: domain,
+        limit: 3
+      });
+
+      // If any matching partners were found...
+      if (phoneMatches && phoneMatches.length > 0) {
+        // ...read their details. The 'mobile' field is removed.
+        const phoneContacts = await this.callMethod('res.partner', 'read', {
+          ids: phoneMatches,
+          fields: ['id', 'name', 'phone', 'email', 'image_128']
+        });
+
+        // Add the found contacts to our suggestions list
+        suggestions.push(...phoneContacts);
       }
-    } else {
-      // Search by name
-      if (contactName && contactName !== 'Unknown Contact') {
-        searchDomain = [['name', 'ilike', contactName]];
-      }
+    }
+    }
+    
+    // Try name match if no phone matches
+    if (suggestions.length === 0 && contactName && contactName !== 'Unknown Contact') {
+      const nameMatches = await this.callMethod('res.partner', 'search', {
+        domain: [['name', 'ilike', contactName]],
+        limit: 5
+      });
       
-      // Add phone search if contact number provided AND not null
-      if (contactNumber && typeof contactNumber === 'string') {
-        const normalizedPhone = contactNumber.replace(/\s|-/g, '');
-        const phoneDigits = normalizedPhone.replace(/^\+/, '');
+      if (nameMatches && nameMatches.length > 0) {
+        const nameContacts = await this.callMethod('res.partner', 'read', {
+          ids: nameMatches,
+          fields: ['id', 'name', 'phone', 'mobile', 'email', 'image_128']
+        });
         
-        if (phoneDigits.length >= 8) {
-          if (searchDomain.length > 0) {
-            searchDomain = [
-              '|', '|', '|',
-              searchDomain[0],
-              ['phone', 'ilike', phoneDigits.slice(-10)],
-              ['phone', 'ilike', phoneDigits.slice(-9)],
-              ['mobile', 'ilike', phoneDigits.slice(-9)]
-            ];
-          } else {
-            searchDomain = [
-              '|', '|',
-              ['phone', 'ilike', phoneDigits.slice(-10)],
-              ['phone', 'ilike', phoneDigits.slice(-9)],
-              ['mobile', 'ilike', phoneDigits.slice(-9)]
-            ];
+        // Prefer phone over mobile
+        nameContacts.forEach(p => {
+          if (!p.phone && p.mobile) {
+            p.phone = p.mobile;
           }
-        }
+        });
+        
+        suggestions.push(...nameContacts);
       }
-    }
-    
-    if (searchDomain.length === 0) {
-      this.log('No valid search criteria after parsing');
-      return { success: true, contacts: [] };
-    }
-    
-    this.log('Search domain:', JSON.stringify(searchDomain));
-    
-    // Search for contacts
-    const partnerIds = await this.callMethod('res.partner', 'search', {
-      domain: searchDomain,
-      limit: 10
-    });
-    
-    this.log('Found partner IDs:', partnerIds);
-    
-    if (partnerIds && partnerIds.length > 0) {
-      const partners = await this.callMethod('res.partner', 'read', {
-        ids: partnerIds,
-        fields: ['id', 'name', 'phone', 'mobile', 'email', 'image_128']
-      });
-      
-      // Prefer phone over mobile
-      partners.forEach(p => {
-        if (!p.phone && p.mobile) {
-          p.phone = p.mobile;
-        }
-      });
-      
-      suggestions.push(...partners);
     }
     
     // Remove duplicates
     const uniqueSuggestions = suggestions.filter((contact, index, self) =>
-      index === self.findIndex(c => c.id === c.id)
+      index === self.findIndex(c => c.id === contact.id)
     );
     
     this.log(`Found ${uniqueSuggestions.length} unique contacts`);
@@ -355,7 +321,7 @@ async suggestContacts(contactName, contactNumber) {
     this.log('Error getting contact suggestions:', error);
     return { success: false, error: error.message, contacts: [] };
   }
-} 
+}
   /**
    * 🆕 Create new contact
    */
