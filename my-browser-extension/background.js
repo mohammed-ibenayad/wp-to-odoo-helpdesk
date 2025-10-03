@@ -238,6 +238,10 @@ class OdooJSON2Client {
   /**
  * Get contact suggestions based on WhatsApp data
  */
+/**
+ * Get contact suggestions based on WhatsApp data
+ * UNIFIED: Uses same search logic as manual search for consistency
+ */
 async suggestContacts(contactName, contactNumber) {
   try {
     if (!this.database) {
@@ -246,76 +250,33 @@ async suggestContacts(contactName, contactNumber) {
     
     this.log('Suggesting contacts for:', { contactName, contactNumber });
     
-    const suggestions = [];
+    const allContacts = [];
     
-    // Try phone match first (most reliable)
+    // Search by phone number first (if provided)
+    // Use the SAME simple ilike search as manual search
     if (contactNumber) {
-      const phoneDigits = contactNumber.replace(/\D/g, '');
-      
-      if (phoneDigits.length >= 8) {
-      // Use the last 9 digits of the phone number for a flexible search string
-      const searchString = phoneDigits.slice(-9);
-
-      // Define a broad search domain, mimicking the working manual search
-      const domain = [
-        '|', '|',
-        ['name', 'ilike', searchString],
-        ['phone', 'ilike', searchString],
-        ['email', 'ilike', searchString]
-      ];
-
-      // Search for partners using the broad domain
-      const phoneMatches = await this.callMethod('res.partner', 'search', {
-        domain: domain,
-        limit: 3
-      });
-
-      // If any matching partners were found...
-      if (phoneMatches && phoneMatches.length > 0) {
-        // ...read their details. The 'mobile' field is removed.
-        const phoneContacts = await this.callMethod('res.partner', 'read', {
-          ids: phoneMatches,
-          fields: ['id', 'name', 'phone', 'email', 'image_128']
-        });
-
-        // Add the found contacts to our suggestions list
-        suggestions.push(...phoneContacts);
-      }
-    }
+      this.log('Searching by phone:', contactNumber);
+      const phoneContacts = await this.searchContacts(contactNumber, 5);
+      allContacts.push(...phoneContacts);
+      this.log(`Phone search found ${phoneContacts.length} matches`);
     }
     
-    // Try name match if no phone matches
-    if (suggestions.length === 0 && contactName && contactName !== 'Unknown Contact') {
-      const nameMatches = await this.callMethod('res.partner', 'search', {
-        domain: [['name', 'ilike', contactName]],
-        limit: 5
-      });
-      
-      if (nameMatches && nameMatches.length > 0) {
-        const nameContacts = await this.callMethod('res.partner', 'read', {
-          ids: nameMatches,
-          fields: ['id', 'name', 'phone', 'mobile', 'email', 'image_128']
-        });
-        
-        // Prefer phone over mobile
-        nameContacts.forEach(p => {
-          if (!p.phone && p.mobile) {
-            p.phone = p.mobile;
-          }
-        });
-        
-        suggestions.push(...nameContacts);
-      }
+    // Search by name (if provided and no phone matches)
+    if (allContacts.length === 0 && contactName && contactName !== 'Unknown Contact') {
+      this.log('Searching by name:', contactName);
+      const nameContacts = await this.searchContacts(contactName, 5);
+      allContacts.push(...nameContacts);
+      this.log(`Name search found ${nameContacts.length} matches`);
     }
     
     // Remove duplicates
-    const uniqueSuggestions = suggestions.filter((contact, index, self) =>
+    const uniqueContacts = allContacts.filter((contact, index, self) =>
       index === self.findIndex(c => c.id === contact.id)
     );
     
-    this.log(`Found ${uniqueSuggestions.length} unique contacts`);
+    this.log(`Total unique contacts found: ${uniqueContacts.length}`);
     
-    return { success: true, contacts: uniqueSuggestions };
+    return { success: true, contacts: uniqueContacts };
     
   } catch (error) {
     this.log('Error getting contact suggestions:', error);

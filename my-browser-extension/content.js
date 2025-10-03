@@ -1823,6 +1823,8 @@ async showTitleModal(messageData, conversationData, type = 'ticket') {
     });
     
     // 4. Load contact suggestions
+// 4. Load contact suggestions
+// 4. Load contact suggestions
 const loadContactSuggestions = async () => {
   try {
     contactSuggestions.style.display = 'block';
@@ -1842,25 +1844,56 @@ const loadContactSuggestions = async () => {
         ? conversationData.groupIdentifiers.phones
         : [];
       
-      console.log('Searching group members:', { names, phones });
+      console.log('🔍 Searching group members:', { names, phones });
       
-      // Search by each name
-      for (const name of names) {
-        if (name && name.trim()) {
-          const nameResult = await window.BackgroundMessenger.suggestContacts(name, null);
-          if (nameResult.success && nameResult.contacts && Array.isArray(nameResult.contacts)) {
-            allContacts.push(...nameResult.contacts);
+      // PRIORITY: Search by phone numbers FIRST (more reliable)
+      for (const phone of phones) {
+        if (phone && phone.trim()) {
+          console.log(`📞 Searching for phone: ${phone}`);
+          const phoneResult = await window.BackgroundMessenger.suggestContacts(null, phone); 
+          console.log(`📞 Result for ${phone}:`, phoneResult);
+          
+          // FIXED: Handle nested contacts structure
+          let contactsList = [];
+          if (phoneResult.success) {
+            // Check if contacts is double-nested
+            if (phoneResult.contacts && phoneResult.contacts.contacts && Array.isArray(phoneResult.contacts.contacts)) {
+              contactsList = phoneResult.contacts.contacts;
+              console.log(`🔧 FIXED: Extracted ${contactsList.length} contacts from nested structure`);
+            } else if (phoneResult.contacts && Array.isArray(phoneResult.contacts)) {
+              contactsList = phoneResult.contacts;
+            }
+            
+            if (contactsList.length > 0) {
+              allContacts.push(...contactsList);
+              console.log(`✅ Added ${contactsList.length} contacts from phone ${phone}`);
+            }
           }
         }
       }
       
-      // Search by each phone
-      for (const phone of phones) {
-        if (phone && phone.trim()) {
-          // CORRECTED: Pass null for the name and the phone number for the second argument
-          const phoneResult = await window.BackgroundMessenger.suggestContacts(null, phone); 
-          if (phoneResult.success && phoneResult.contacts && Array.isArray(phoneResult.contacts)) {
-            allContacts.push(...phoneResult.contacts);
+      // THEN search by names (if any)
+      for (const name of names) {
+        if (name && name.trim()) {
+          console.log(`👤 Searching for name: ${name}`);
+          const nameResult = await window.BackgroundMessenger.suggestContacts(name, null);
+          console.log(`👤 Result for ${name}:`, nameResult);
+          
+          // FIXED: Handle nested contacts structure
+          let contactsList = [];
+          if (nameResult.success) {
+            // Check if contacts is double-nested
+            if (nameResult.contacts && nameResult.contacts.contacts && Array.isArray(nameResult.contacts.contacts)) {
+              contactsList = nameResult.contacts.contacts;
+              console.log(`🔧 FIXED: Extracted ${contactsList.length} contacts from nested structure`);
+            } else if (nameResult.contacts && Array.isArray(nameResult.contacts)) {
+              contactsList = nameResult.contacts;
+            }
+            
+            if (contactsList.length > 0) {
+              allContacts.push(...contactsList);
+              console.log(`✅ Added ${contactsList.length} contacts from name ${name}`);
+            }
           }
         }
       }
@@ -1872,16 +1905,26 @@ const loadContactSuggestions = async () => {
       
       result = { success: true, contacts: unique };
       
-      console.log(`Found ${unique.length} contacts from group search`);
+      console.log(`✅ TOTAL: Found ${unique.length} unique contacts from group search`);
     } else {
       // Single contact search
+      console.log('🔍 Single contact search:', {
+        name: conversationData.contactName,
+        phone: conversationData.contactNumber
+      });
       result = await window.BackgroundMessenger.suggestContacts(
         conversationData.contactName,
         conversationData.contactNumber
       );
+      
+      // FIXED: Handle nested contacts structure for single contact too
+      if (result.success && result.contacts && result.contacts.contacts && Array.isArray(result.contacts.contacts)) {
+        console.log(`🔧 FIXED: Extracted ${result.contacts.contacts.length} contacts from nested structure (single)`);
+        result.contacts = result.contacts.contacts;
+      }
     }
     
-    console.log('Contact suggestions result:', result);
+    console.log('📊 Final contact suggestions result:', result);
     
     if (result.success && result.contacts && result.contacts.length > 0) {
       displayContactSuggestions(result.contacts);
@@ -1903,12 +1946,12 @@ const loadContactSuggestions = async () => {
       }
     }
   } catch (error) {
-    console.error('Error loading suggestions:', error);
+    console.error('❌ Error loading suggestions:', error);
     const chipsContainer = modalContent.querySelector('#contact-chips-container');
     if (chipsContainer) {
       chipsContainer.innerHTML = `
         <div style="text-align: center; padding: 20px; color: #dc3545; font-size: 13px;">
-          <p style="margin-bottom: 12px;">Error loading contacts</p>
+          <p style="margin-bottom: 12px;">Error loading contacts: ${error.message}</p>
           <button class="odoo-contact-create-new-btn" id="show-create-contact-error" style="background: #007AFF; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
             + Create New Contact
           </button>
