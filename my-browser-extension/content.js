@@ -1823,8 +1823,7 @@ async showTitleModal(messageData, conversationData, type = 'ticket') {
     });
     
     // 4. Load contact suggestions
-// 4. Load contact suggestions
-// 4. Load contact suggestions
+    // 4. Load contact suggestions
 const loadContactSuggestions = async () => {
   try {
     contactSuggestions.style.display = 'block';
@@ -1833,9 +1832,7 @@ const loadContactSuggestions = async () => {
     let result;
     
     if (conversationData.isGroup && conversationData.groupIdentifiers) {
-      const allContacts = [];
-      
-      // FIXED: Check if names is an array before iterating
+      // OPTIMIZED: Use BATCH search - ONE API call instead of 8+
       const names = Array.isArray(conversationData.groupIdentifiers.names) 
         ? conversationData.groupIdentifiers.names 
         : [];
@@ -1844,68 +1841,27 @@ const loadContactSuggestions = async () => {
         ? conversationData.groupIdentifiers.phones
         : [];
       
-      console.log('🔍 Searching group members:', { names, phones });
+      console.log('🚀 BATCH searching group members in ONE request:', { names, phones });
       
-      // PRIORITY: Search by phone numbers FIRST (more reliable)
-      for (const phone of phones) {
-        if (phone && phone.trim()) {
-          console.log(`📞 Searching for phone: ${phone}`);
-          const phoneResult = await window.BackgroundMessenger.suggestContacts(null, phone); 
-          console.log(`📞 Result for ${phone}:`, phoneResult);
-          
-          // FIXED: Handle nested contacts structure
-          let contactsList = [];
-          if (phoneResult.success) {
-            // Check if contacts is double-nested
-            if (phoneResult.contacts && phoneResult.contacts.contacts && Array.isArray(phoneResult.contacts.contacts)) {
-              contactsList = phoneResult.contacts.contacts;
-              console.log(`🔧 FIXED: Extracted ${contactsList.length} contacts from nested structure`);
-            } else if (phoneResult.contacts && Array.isArray(phoneResult.contacts)) {
-              contactsList = phoneResult.contacts;
-            }
-            
-            if (contactsList.length > 0) {
-              allContacts.push(...contactsList);
-              console.log(`✅ Added ${contactsList.length} contacts from phone ${phone}`);
-            }
-          }
+      // Single batch API call
+      const batchResult = await window.BackgroundMessenger.batchSearchContacts(phones, names);
+      
+      console.log('🎯 Batch result:', batchResult);
+      
+      // Handle nested structure if needed
+      let contacts = [];
+      if (batchResult.success) {
+        if (batchResult.contacts && Array.isArray(batchResult.contacts)) {
+          contacts = batchResult.contacts;
+        } else if (batchResult.contacts && batchResult.contacts.contacts && Array.isArray(batchResult.contacts.contacts)) {
+          contacts = batchResult.contacts.contacts;
+          console.log(`🔧 FIXED: Extracted from nested structure`);
         }
       }
       
-      // THEN search by names (if any)
-      for (const name of names) {
-        if (name && name.trim()) {
-          console.log(`👤 Searching for name: ${name}`);
-          const nameResult = await window.BackgroundMessenger.suggestContacts(name, null);
-          console.log(`👤 Result for ${name}:`, nameResult);
-          
-          // FIXED: Handle nested contacts structure
-          let contactsList = [];
-          if (nameResult.success) {
-            // Check if contacts is double-nested
-            if (nameResult.contacts && nameResult.contacts.contacts && Array.isArray(nameResult.contacts.contacts)) {
-              contactsList = nameResult.contacts.contacts;
-              console.log(`🔧 FIXED: Extracted ${contactsList.length} contacts from nested structure`);
-            } else if (nameResult.contacts && Array.isArray(nameResult.contacts)) {
-              contactsList = nameResult.contacts;
-            }
-            
-            if (contactsList.length > 0) {
-              allContacts.push(...contactsList);
-              console.log(`✅ Added ${contactsList.length} contacts from name ${name}`);
-            }
-          }
-        }
-      }
+      result = { success: true, contacts: contacts };
+      console.log(`✅ TOTAL: Found ${contacts.length} contacts in ONE batch request!`);
       
-      // Remove duplicates
-      const unique = allContacts.filter((c, i, self) => 
-        i === self.findIndex(x => x.id === c.id)
-      );
-      
-      result = { success: true, contacts: unique };
-      
-      console.log(`✅ TOTAL: Found ${unique.length} unique contacts from group search`);
     } else {
       // Single contact search
       console.log('🔍 Single contact search:', {

@@ -231,14 +231,80 @@ class OdooJSON2Client {
       return [];
     }
   }
-  
+
   /**
-   * 🆕 Get contact suggestions based on WhatsApp data
-   */
-  /**
- * Get contact suggestions based on WhatsApp data
+ * 🆕 BATCH search contacts by multiple phone numbers and names in ONE request
  */
-/**
+async batchSearchContacts(phones = [], names = []) {
+  try {
+    if (!this.database) {
+      this.database = await this.getDatabaseName();
+    }
+    
+    this.log('Batch searching contacts:', { phones, names });
+    
+    // Filter out empty values
+    const validPhones = phones.filter(p => p && p.trim());
+    const validNames = names.filter(n => n && n.trim());
+    
+    if (validPhones.length === 0 && validNames.length === 0) {
+      this.log('No valid search terms provided');
+      return [];
+    }
+    
+    // Build a complex OR domain that searches for ANY of the phones or names
+    const domainParts = [];
+    
+    // Add all phone searches (phone field only)
+    validPhones.forEach(phone => {
+      domainParts.push(['phone', 'ilike', phone]);
+    });
+    
+    // Add all name searches
+    validNames.forEach(name => {
+      domainParts.push(['name', 'ilike', name]);
+    });
+    
+    // Build domain with OR operators
+    // Format: ['|', '|', '|', condition1, condition2, condition3, ...]
+    const domain = [];
+    for (let i = 0; i < domainParts.length - 1; i++) {
+      domain.push('|');
+    }
+    domain.push(...domainParts);
+    
+    this.log('Batch search domain parts:', domainParts.length);
+    
+    // Single search for all contacts
+    const partnerIds = await this.callMethod('res.partner', 'search', {
+      domain: domain,
+      limit: 50
+    });
+    
+    this.log('Found partner IDs:', partnerIds);
+    
+    if (!partnerIds || partnerIds.length === 0) {
+      this.log('No partners found');
+      return [];
+    }
+    
+    // Read all contact details in one call
+    const partners = await this.callMethod('res.partner', 'read', {
+      ids: partnerIds,
+      fields: ['id', 'name', 'phone', 'email', 'image_128']
+    });
+    
+    this.log(`✅ Batch search found ${partners.length} contacts in ONE request`);
+    
+    return partners;
+    
+  } catch (error) {
+    this.log('❌ Error in batch search:', error);
+    throw error;
+  }
+}
+  
+ /**
  * Get contact suggestions based on WhatsApp data
  * UNIFIED: Uses same search logic as manual search for consistency
  */
@@ -283,6 +349,7 @@ async suggestContacts(contactName, contactNumber) {
     return { success: false, error: error.message, contacts: [] };
   }
 }
+
   /**
    * 🆕 Create new contact
    */
@@ -692,6 +759,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  // 🆕 BATCH contact search handler
+if (message.action === 'batchSearchContacts') {
+  handleBatchSearchContacts(message.config, message.phones, message.names)
+    .then(sendResponse)
+    .catch(error => {
+      console.error('Batch search contacts error:', error);
+      sendResponse({
+        success: false,
+        error: error.message,
+        contacts: []
+      });
+    });
+  return true;
+}
   
   // 🆕 Contact suggestions handler
   if (message.action === 'suggestContacts') {
@@ -821,6 +903,35 @@ async function handleCreateContact(config, contactData) {
     return {
       success: false,
       error: error.message
+    };
+  }
+}
+
+// 🆕 Handle batch contact search
+async function handleBatchSearchContacts(config, phones, names) {
+  console.log('📦 Batch searching contacts:', { 
+    phoneCount: phones?.length, 
+    nameCount: names?.length,
+    phones,
+    names
+  });
+  
+  try {
+    const odooClient = new OdooJSON2Client(config);
+    const contacts = await odooClient.batchSearchContacts(phones || [], names || []);
+    
+    console.log(`✅ Batch search returned ${contacts.length} contacts`);
+    
+    return {
+      success: true,
+      contacts: contacts
+    };
+  } catch (error) {
+    console.error('❌ Batch search contacts error:', error);
+    return {
+      success: false,
+      error: error.message,
+      contacts: []
     };
   }
 }

@@ -54,24 +54,50 @@
     
     static async searchContacts(query) {
       const config = await this.getOdooConfig();
-      return await this.sendToBackground({
+      const result = await this.sendToBackground({
         action: 'searchContacts',
         config: config,
         query: query
       });
+      
+      console.log('📋 searchContacts raw result:', result);
+      
+      return result;
     }
     
-static async suggestContacts(contactName, contactNumber) {
-  const config = await this.getOdooConfig();
-  return await this.sendToBackground({
-    action: 'suggestContacts',
-    config: config,
-    contactName: contactName,
-    contactNumber: contactNumber
-  });
-}
-
-
+    /**
+     * 🆕 BATCH search contacts - ONE API call instead of many
+     */
+    static async batchSearchContacts(phones, names) {
+      const config = await this.getOdooConfig();
+      
+      console.log('📦 BackgroundMessenger.batchSearchContacts called with:', { phones, names });
+      
+      const result = await this.sendToBackground({
+        action: 'batchSearchContacts',
+        config: config,
+        phones: phones,
+        names: names
+      });
+      
+      console.log('🔥 batchSearchContacts result:', result);
+      
+      return result;
+    }
+    
+    static async suggestContacts(contactName, contactNumber) {
+      const config = await this.getOdooConfig();
+      const result = await this.sendToBackground({
+        action: 'suggestContacts',
+        config: config,
+        contactName: contactName,
+        contactNumber: contactNumber
+      });
+      
+      console.log('💡 suggestContacts raw result:', result);
+      
+      return result;
+    }
     
     static async createContact(contactData) {
       const config = await this.getOdooConfig();
