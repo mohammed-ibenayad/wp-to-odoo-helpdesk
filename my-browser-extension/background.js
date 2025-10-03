@@ -257,7 +257,11 @@ async batchSearchContacts(phones = [], names = []) {
     
     // Add all phone searches (phone field only)
     validPhones.forEach(phone => {
-      domainParts.push(['phone', 'ilike', phone]);
+      // Normalize phone: remove spaces and dashes
+      const normalizedPhone = phone.replace(/[\s-]/g, '');
+      // Use wildcards to match variations with/without spaces
+      const phonePattern = normalizedPhone.split('').join('%');
+      domainParts.push(['phone', 'ilike', phonePattern]);
     });
     
     // Add all name searches
