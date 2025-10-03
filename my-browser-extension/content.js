@@ -793,22 +793,25 @@ const searchContacts = async (query) => {
 };
 
 const displaySearchResults = (contacts) => {
-  // First, try to get the containers
+  console.log('💎 displaySearchResults called with:', contacts.length, 'contacts');
+  
   let chipsContainer = modalContent.querySelector('#contact-chips-container');
   let chips = modalContent.querySelector('#contact-chips');
   
-  // If they don't exist, log and try an alternative approach
+  // Always hide suggestions when showing search results
+  if (contactSuggestions) contactSuggestions.style.display = 'none';
+  if (contactResults) contactResults.style.display = 'none';
+  if (quickCreateSection) quickCreateSection.style.display = 'none';
+  
+  // Handle case where containers don't exist
   if (!chipsContainer || !chips) {
     console.error('Chips container missing, using alternative display');
-    
-    // Use the contact-expanded div directly
     const expandedDiv = modalContent.querySelector('#contact-expanded');
     if (!expandedDiv) {
       console.error('Contact expanded div also missing!');
       return;
     }
     
-    // Create the container if it doesn't exist
     let tempContainer = expandedDiv.querySelector('#temp-results');
     if (!tempContainer) {
       tempContainer = document.createElement('div');
@@ -817,66 +820,103 @@ const displaySearchResults = (contacts) => {
       expandedDiv.appendChild(tempContainer);
     }
     
-    // Display results in temp container
-    let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+    if (contacts.length === 0) {
+      tempContainer.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: #6c757d; font-size: 13px;">
+          <p style="margin-bottom: 12px; font-size: 14px;">😕 No contacts found</p>
+          <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term or create a new contact</p>
+          <button class="odoo-contact-create-new-btn" id="show-create-contact-search-temp" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;">
+            ➕ Create New Contact
+          </button>
+        </div>
+      `;
+      modalContent.querySelector('#show-create-contact-search-temp')?.addEventListener('click', showQuickCreateForm);
+      return;
+    }
+    
+    let html = '<div style="margin-top: 8px;"><p style="font-size: 12px; font-weight: 600; color: #666; margin-bottom: 10px; padding-left: 4px;">✨ Found ' + contacts.length + ' contact' + (contacts.length === 1 ? '' : 's') + '</p><div style="display: flex; flex-wrap: wrap; gap: 8px;">';
     contacts.forEach(contact => {
       const initials = contact.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
       html += `
-        <div class="odoo-contact-chip" data-contact-id="${contact.id}" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: white; border: 2px solid #e0e0e0; border-radius: 20px; cursor: pointer; font-size: 13px;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: #25D366; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px;">${initials}</div>
+        <div class="odoo-contact-chip" data-contact-id="${contact.id}" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: white; border: 2px solid #e0e0e0; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #25D366; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">${initials}</div>
           <span style="font-weight: 500; color: #495057;">${contact.name}</span>
         </div>
       `;
     });
-    html += '</div>';
+    html += '</div></div>';
     
     tempContainer.innerHTML = html;
     
-    // Add click handlers
     tempContainer.querySelectorAll('.odoo-contact-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const contactId = parseInt(chip.dataset.contactId);
         const contact = contacts.find(c => c.id === contactId);
         if (contact) selectContact(contact);
       });
+      
+      chip.addEventListener('mouseenter', (e) => {
+        e.target.style.borderColor = '#25D366';
+        e.target.style.background = 'rgba(37, 211, 102, 0.05)';
+        e.target.style.transform = 'translateY(-2px)';
+      });
+      
+      chip.addEventListener('mouseleave', (e) => {
+        e.target.style.borderColor = '#e0e0e0';
+        e.target.style.background = 'white';
+        e.target.style.transform = 'translateY(0)';
+      });
     });
     
     return;
   }
   
-  // Normal flow if containers exist
+  // Normal flow with existing containers
   if (contacts.length === 0) {
     chipsContainer.innerHTML = `
-      <div style="text-align: center; padding: 20px; color: #6c757d; font-size: 13px;">
-        <p style="margin-bottom: 12px;">No contacts found</p>
-        <button class="odoo-contact-create-new-btn" id="show-create-contact-search" style="background: #007AFF; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
-          + Create New Contact
+      <div style="text-align: center; padding: 24px 16px; background: #f8f9fa; border-radius: 8px; margin: 8px 0;">
+        <div style="font-size: 36px; margin-bottom: 12px;">😕</div>
+        <p style="margin-bottom: 8px; font-size: 14px; color: #495057; font-weight: 500;">No contacts found</p>
+        <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term or create a new contact</p>
+        <button class="odoo-contact-create-new-btn" id="show-create-contact-search" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+          ➕ Create New Contact
         </button>
       </div>
     `;
     chipsContainer.style.display = 'block';
     
-    modalContent.querySelector('#show-create-contact-search')?.addEventListener('click', showQuickCreateForm);
+    const createBtn = modalContent.querySelector('#show-create-contact-search');
+    createBtn?.addEventListener('click', showQuickCreateForm);
+    createBtn?.addEventListener('mouseenter', (e) => {
+      e.target.style.background = '#0056b3';
+      e.target.style.transform = 'translateY(-2px)';
+    });
+    createBtn?.addEventListener('mouseleave', (e) => {
+      e.target.style.background = '#007AFF';
+      e.target.style.transform = 'translateY(0)';
+    });
     return;
   }
   
-  let html = '';
+  // Found results - show them prominently
+  let html = '<div style="margin-bottom: 8px; padding: 8px 12px; background: #e8f5e9; border-radius: 6px; border-left: 3px solid #25D366;"><p style="font-size: 12px; font-weight: 600; color: #1b5e20; margin: 0;">✨ Found ' + contacts.length + ' contact' + (contacts.length === 1 ? '' : 's') + '</p></div>';
+  
   contacts.forEach(contact => {
     const initials = contact.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    const details = [contact.phone, contact.email].filter(Boolean).join(' • ');
     html += `
       <div class="odoo-contact-chip" data-contact-id="${contact.id}">
         <div class="odoo-contact-chip-avatar">${initials}</div>
-        <span class="odoo-contact-chip-name">${contact.name}</span>
+        <div style="flex: 1;">
+          <div class="odoo-contact-chip-name">${contact.name}</div>
+          ${details ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">${details}</div>` : ''}
+        </div>
       </div>
     `;
   });
   
   chips.innerHTML = html;
   chipsContainer.style.display = 'block';
-  
-  // Hide other containers
-  if (contactSuggestions) contactSuggestions.style.display = 'none';
-  if (contactResults) contactResults.style.display = 'none';
   
   chips.querySelectorAll('.odoo-contact-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -885,6 +925,8 @@ const displaySearchResults = (contacts) => {
       if (contact) selectContact(contact);
     });
   });
+  
+  console.log('✅ Search results displayed successfully');
 };
     // 7. Select contact
     const selectContact = (contact) => {

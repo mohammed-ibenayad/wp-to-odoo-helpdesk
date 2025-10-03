@@ -324,6 +324,7 @@
 }
 
 /* Contact chips */
+/* Contact chips - ENHANCED */
 .odoo-contact-chips {
   display: flex;
   flex-wrap: wrap;
@@ -334,25 +335,28 @@
 .odoo-contact-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   background: white;
   border: 2px solid #e0e0e0;
-  border-radius: 20px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 13px;
+  flex: 1 1 calc(50% - 4px); /* Two columns */
+  min-width: 0;
 }
 
 .odoo-contact-chip:hover {
   border-color: #25D366;
   background: rgba(37, 211, 102, 0.05);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(37, 211, 102, 0.15);
 }
 
 .odoo-contact-chip-avatar {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #25D366;
   color: white;
@@ -360,14 +364,17 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .odoo-contact-chip-name {
   font-weight: 500;
   color: #495057;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
 /* Selected contact card */
 .odoo-contact-selected {
   padding: 12px;
