@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "WhatsApp to Odoo POC",
-  "version": "1.0.1",
-  "description": "Convert WhatsApp conversations to Odoo tickets",
+  "version": "1.1.0",
+  "description": "Convert WhatsApp conversations to Odoo tickets with AI-powered suggestions",
   "permissions": [
     "activeTab",
     "storage",
@@ -17,12 +17,16 @@
   "content_scripts": [
     {
       "matches": ["https://web.whatsapp.com/*"],
-      "css": ["styles/content.css"],
+      "css": [
+        "styles/content.css",
+        "styles/ai-modal.css"
+      ],
       "js": [
         "modules/utils/Icons.js",
         "modules/utils/Notifications.js",
         "modules/api/BackgroundMessenger.js",
         "modules/core/MessageExtractor.js",
+        "modules/ui/AISuggestionModal.js",
         "content.js"
       ],
       "run_at": "document_idle"

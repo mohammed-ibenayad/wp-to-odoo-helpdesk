@@ -20,68 +20,79 @@ class WhatsAppMessageTracker {
 
 
   addSelectionPanel() {
-    const panel = document.createElement('div');
-    panel.className = 'odoo-selection-panel';
-    panel.id = 'odoo-selection-panel';
-    
-    // UPDATED HTML
-    panel.innerHTML = `
-      <div class="odoo-selection-header">
-        <h3 class="odoo-selection-title">Create from Messages</h3>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="odoo-selection-count">0 selected</span>
-        </div>
-        </div>
-      
-      <div class="odoo-selection-messages" id="odoo-selected-messages">
-        <div class="odoo-selection-empty">
-          <div class="odoo-selection-empty-icon">💬</div>
-          <p>Click messages to select them, then choose an action below</p>
-          <p style="font-size: 11px; color: #999; margin-top: 8px;">
-            Tip: Click a selected message again to deselect it
-          </p>
-        </div>
+  const panel = document.createElement('div');
+  panel.className = 'odoo-selection-panel';
+  panel.id = 'odoo-selection-panel';
+  
+  panel.innerHTML = `
+    <div class="odoo-selection-header">
+      <h3 class="odoo-selection-title">Create from Messages</h3>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="odoo-selection-count">0 selected</span>
       </div>
-      
-      <div class="odoo-selection-actions">
-        <button class="odoo-selection-btn ticket" id="odoo-create-ticket" disabled>
-          ${this.modernIcons.ticket} Ticket
-        </button>
-        <button class="odoo-selection-btn task" id="odoo-create-task" disabled>
-          ${this.modernIcons.task} Task
-        </button>
-        <button class="odoo-selection-btn lead" id="odoo-create-lead" disabled>
-          ${this.modernIcons.lead} Lead
-        </button>
+    </div>
+    
+    <div class="odoo-selection-messages" id="odoo-selected-messages">
+      <div class="odoo-selection-empty">
+        <div class="odoo-selection-empty-icon">💬</div>
+        <p>Click messages to select them, then choose an action below</p>
+        <p style="font-size: 11px; color: #999; margin-top: 8px;">
+          Tip: Click a selected message again to deselect it
+        </p>
       </div>
+    </div>
+    
+    <div class="odoo-selection-actions">
+      <!-- NEW: AI Smart Button -->
+  <button class="odoo-selection-btn ai-smart" id="odoo-ai-suggest" 
+          style="grid-column: span 3; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    🤖 AI Smart Suggest
+  </button>
+
       
-      <div class="odoo-selection-utility-actions">
-        <button class="odoo-selection-btn secondary" id="odoo-clear-selection">
-          Clear All
-        </button>
-      </div>
-    `;
+      
+      <!-- Manual buttons -->
+      <button class="odoo-selection-btn ticket" id="odoo-create-ticket" disabled>
+        ${this.modernIcons.ticket} Ticket
+      </button>
+      <button class="odoo-selection-btn task" id="odoo-create-task" disabled>
+        ${this.modernIcons.task} Task
+      </button>
+      <button class="odoo-selection-btn lead" id="odoo-create-lead" disabled>
+        ${this.modernIcons.lead} Lead
+      </button>
+    </div>
     
-    document.body.appendChild(panel);
-    
-    document.getElementById('odoo-create-ticket').addEventListener('click', () => {
-      this.createTicketFromSelection();
-    });
-    
-    document.getElementById('odoo-create-task').addEventListener('click', () => {
-      this.createTaskFromSelection();
-    });
-    
-    document.getElementById('odoo-create-lead').addEventListener('click', () => {
-      this.createLeadFromSelection();
-    });
-    
-    document.getElementById('odoo-clear-selection').addEventListener('click', () => {
-      this.clearSelection();
-    });
-    
-    // REMOVED: exit selection mode listener
-  }
+    <div class="odoo-selection-utility-actions">
+      <button class="odoo-selection-btn secondary" id="odoo-clear-selection">
+        Clear All
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(panel);
+  
+  // Add event listeners
+  document.getElementById('odoo-ai-suggest').addEventListener('click', () => {
+    this.showAISuggestionModal();
+  });
+  
+  document.getElementById('odoo-create-ticket').addEventListener('click', () => {
+    this.createTicketFromSelection();
+  });
+  
+  document.getElementById('odoo-create-task').addEventListener('click', () => {
+    this.createTaskFromSelection();
+  });
+  
+  document.getElementById('odoo-create-lead').addEventListener('click', () => {
+    this.createLeadFromSelection();
+  });
+  
+  document.getElementById('odoo-clear-selection').addEventListener('click', () => {
+    this.clearSelection();
+  });
+}
 
   startMonitoring() {
     const observer = new MutationObserver((mutations) => {
@@ -205,19 +216,22 @@ class WhatsAppMessageTracker {
 
  updateSelectionPanel() {
     const count = this.selectedMessages.size;
-    const countElement = document.querySelector('.odoo-selection-count');
-    const messagesContainer = document.getElementById('odoo-selected-messages');
-    const createTicketBtn = document.getElementById('odoo-create-ticket');
-    const createTaskBtn = document.getElementById('odoo-create-task');
-    const createLeadBtn = document.getElementById('odoo-create-lead');
-    
-    countElement.textContent = count === 0 ? 'No messages selected' : 
-                               count === 1 ? '1 message selected' :
-                               `${count} messages selected`;
+  const countElement = document.querySelector('.odoo-selection-count');
+  const messagesContainer = document.getElementById('odoo-selected-messages');
+  const createTicketBtn = document.getElementById('odoo-create-ticket');
+  const createTaskBtn = document.getElementById('odoo-create-task');
+  const createLeadBtn = document.getElementById('odoo-create-lead');
+  const aiSuggestBtn = document.getElementById('odoo-ai-suggest'); // NEW
+  aiSuggestBtn.disabled = count === 0;
+  
+  countElement.textContent = count === 0 ? 'No messages selected' : 
+                             count === 1 ? '1 message selected' :
+                             `${count} messages selected`;
 
-    createTicketBtn.disabled = count === 0;
-    createTaskBtn.disabled = count === 0;
-    createLeadBtn.disabled = count === 0;
+  createTicketBtn.disabled = count === 0;
+  createTaskBtn.disabled = count === 0;
+  createLeadBtn.disabled = count === 0;
+  aiSuggestBtn.disabled = count === 0; // NEW
     
     if (count === 0) {
       // UPDATED: Better empty state
@@ -1126,6 +1140,65 @@ const displaySearchResults = (contacts, searchId) => {
       }
     });
   });
+}
+
+
+async showAISuggestionModal() {
+  if (this.selectedMessages.size === 0) {
+    window.NotificationManager.showError('Please select at least one message');
+    return;
+  }
+
+  const conversationData = window.MessageExtractor.extractConversationData();
+  
+  const messages = Array.from(this.selectedMessages.values()).map(item => ({
+    content: item.data.content,
+    timestamp: item.data.timestamp,
+    senderType: window.MessageExtractor.isIncomingMessage(item.container) ? 'customer' : 'agent'
+  }));
+  
+  messages.sort((a, b) => a.timestamp - b.timestamp);
+  
+  // Show AI modal
+  const aiModal = new window.AISuggestionModal(messages, conversationData);
+  const result = await aiModal.show();
+  
+  if (result && result.create) {
+    await this.createFromAISuggestion(result.type, result.data, messages, conversationData);
+  } else if (result && result.editMode) {
+    await this.createFromSelection(result.type, result.data);
+  }
+}
+// Add method to create items from AI suggestions
+async createFromAISuggestion(type, aiData, messages, conversationData) {
+  try {
+    let result;
+    
+    if (type === 'ticket') {
+      const ticketData = {
+        contactName: conversationData.contactName,
+        contactNumber: conversationData.contactNumber,
+        summary: aiData.title,
+        description: window.MessageExtractor.formatMultipleMessages(messages, conversationData, 'ticket'),
+        messages: messages,
+        source: 'whatsapp_ai',
+        priority: aiData.priority,
+        partner_id: null
+      };
+      result = await window.BackgroundMessenger.createTicket(ticketData);
+    }
+    // ... similar for task and lead ...
+    
+    if (result.success) {
+      const itemId = result.ticketId || result.taskId || result.leadId;
+      window.NotificationManager.showSuccess(
+        `🤖 AI-generated ${type} created successfully! ID: ${itemId}`
+      );
+      this.clearSelection();
+    }
+  } catch (error) {
+    window.NotificationManager.showError(`Error: ${error.message}`);
+  }
 }
 }
 

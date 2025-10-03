@@ -1,0 +1,530 @@
+/* AI Suggestion Modal Styles */
+.odoo-ai-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.odoo-ai-modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Step Card */
+.odoo-ai-step-card {
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.odoo-ai-step-card:last-child {
+  border-bottom: none;
+}
+
+.odoo-ai-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.odoo-ai-step-number {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #25D366 0%, #1ea952 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+  flex-shrink: 0;
+}
+
+.odoo-ai-step-info {
+  flex: 1;
+}
+
+.odoo-ai-step-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #212529;
+  margin: 0;
+}
+
+.odoo-ai-step-subtitle {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 4px 0 0 0;
+}
+
+/* Messages Preview */
+.odoo-ai-messages-preview {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.odoo-ai-message-item {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 3px solid #25D366;
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.odoo-ai-message-item:last-child {
+  margin-bottom: 0;
+}
+
+.odoo-ai-message-meta {
+  font-size: 11px;
+  color: #999;
+  margin-top: 6px;
+}
+
+.odoo-ai-info-box {
+  background: rgba(0, 122, 255, 0.05);
+  border-left: 3px solid #007AFF;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #495057;
+  line-height: 1.6;
+}
+
+.odoo-ai-info-box strong {
+  color: #007AFF;
+  font-weight: 600;
+}
+
+/* AI Analysis Section */
+.odoo-ai-analyze-section {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.odoo-ai-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  position: relative;
+  animation: iconPulse 2s infinite ease-in-out;
+}
+
+/* Simple pulse animation like the mockup */
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
+  }
+}
+
+/* Spinning border ring */
+.odoo-ai-icon::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.6);
+  border-right-color: rgba(255, 255, 255, 0.3);
+  animation: spin 1.5s linear infinite;
+  z-index: 1;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.odoo-ai-analyzing-text {
+  color: #6c757d;
+  font-size: 14px;
+  animation: fadeInOut 2s infinite;
+}
+
+.odoo-ai-analyzing-text p {
+  margin: 8px 0;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+/* Suggestions Grid */
+.odoo-ai-suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.odoo-ai-suggestion-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.odoo-ai-suggestion-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.odoo-ai-suggestion-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: #25D366;
+}
+
+.odoo-ai-suggestion-card:hover::before {
+  width: 8px;
+  background: #25D366;
+}
+
+.odoo-ai-suggestion-card.recommended {
+  border-color: #25D366;
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+}
+
+.odoo-ai-suggestion-card.recommended::before {
+  background: #25D366;
+  width: 6px;
+}
+
+.odoo-ai-suggestion-card.selected {
+  border-color: #25D366;
+  border-width: 3px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%);
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.2);
+}
+
+.odoo-ai-suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.odoo-ai-suggestion-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.odoo-ai-type-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.odoo-ai-type-icon.ticket {
+  background: rgba(37, 211, 102, 0.1);
+}
+
+.odoo-ai-type-icon.task {
+  background: rgba(255, 149, 0, 0.1);
+}
+
+.odoo-ai-type-icon.lead {
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.odoo-ai-type-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.odoo-ai-recommended-badge {
+  background: #25D366;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Confidence Bar */
+.odoo-ai-confidence-bar {
+  margin-bottom: 16px;
+}
+
+.odoo-ai-confidence-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 6px;
+}
+
+.odoo-ai-confidence-progress {
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.odoo-ai-confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #25D366 0%, #1ea952 100%);
+  border-radius: 3px;
+  transition: width 1s ease-out;
+}
+
+/* AI Reasoning */
+.odoo-ai-reasoning {
+  background: rgba(102, 126, 234, 0.05);
+  border-left: 3px solid #667eea;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.odoo-ai-reasoning-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #667eea;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.odoo-ai-reasoning-text {
+  font-size: 12px;
+  color: #6c757d;
+  line-height: 1.5;
+}
+
+/* Suggestion Details */
+.odoo-ai-suggestion-details {
+  margin-bottom: 16px;
+}
+
+.odoo-ai-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.odoo-ai-detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.odoo-ai-detail-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.odoo-ai-detail-value {
+  color: #6c757d;
+  flex: 1;
+}
+
+.odoo-ai-detail-value.error {
+  color: #dc3545;
+}
+
+/* Suggestion Actions */
+.odoo-ai-suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.odoo-ai-action-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.odoo-ai-action-btn.primary {
+  background: linear-gradient(135deg, #25D366 0%, #1ea952 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+}
+
+.odoo-ai-action-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.odoo-ai-action-btn.secondary {
+  background: white;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.odoo-ai-action-btn.secondary:hover {
+  background: #f8f9fa;
+}
+
+.odoo-ai-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Final Actions */
+.odoo-ai-final-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 10px;
+}
+
+.odoo-ai-final-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.odoo-ai-final-btn.create {
+  background: linear-gradient(135deg, #25D366 0%, #1ea952 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.odoo-ai-final-btn.create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
+}
+
+.odoo-ai-final-btn.create:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.odoo-ai-final-btn.cancel {
+  background: white;
+  color: #495057;
+  border: 2px solid #dee2e6;
+}
+
+.odoo-ai-final-btn.cancel:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .odoo-ai-suggestions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .odoo-ai-modal-content {
+    max-height: 95vh;
+  }
+
+  .odoo-ai-step-card {
+    padding: 16px;
+  }
+
+  .odoo-ai-step-title {
+    font-size: 18px;
+  }
+}
+
+/* Scrollbar styling */
+.odoo-ai-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.odoo-ai-modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 0 16px 16px 0;
+}
+
+.odoo-ai-modal-content::-webkit-scrollbar-thumb {
+  background: #25D366;
+  border-radius: 4px;
+}
+
+.odoo-ai-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #1ea952;
+}
