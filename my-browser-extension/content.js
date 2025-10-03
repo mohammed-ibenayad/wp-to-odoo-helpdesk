@@ -792,11 +792,24 @@ const searchContacts = async (query) => {
   }
 };
 
-const displaySearchResults = (contacts) => {
-  console.log('💎 displaySearchResults called with:', contacts.length, 'contacts');
+
+const displaySearchResults = (contacts, searchId) => {
+  // Verify this is still the current search
+  if (searchId && searchId !== currentSearchId) {
+    console.log(`⚠️ Display cancelled for search ${searchId} - current is ${currentSearchId}`);
+    return;
+  }
+  
+  console.log('💎 displaySearchResults called with:', contacts.length, 'contacts, searchId:', searchId);
   
   let chipsContainer = modalContent.querySelector('#contact-chips-container');
   let chips = modalContent.querySelector('#contact-chips');
+  
+  console.log('🔍 Container check:', {
+    chipsContainer: !!chipsContainer,
+    chips: !!chips,
+    modalContent: !!modalContent
+  });
   
   // Always hide suggestions when showing search results
   if (contactSuggestions) contactSuggestions.style.display = 'none';
@@ -805,10 +818,13 @@ const displaySearchResults = (contacts) => {
   
   // Handle case where containers don't exist
   if (!chipsContainer || !chips) {
-    console.error('Chips container missing, using alternative display');
+    console.warn('⚠️ Chips container missing, checking if modal content exists properly');
+    
+    // Try to find contact-expanded instead
     const expandedDiv = modalContent.querySelector('#contact-expanded');
     if (!expandedDiv) {
-      console.error('Contact expanded div also missing!');
+      console.error('❌ Contact expanded div also missing! Modal may not be initialized properly');
+      console.log('Modal HTML structure:', modalContent.innerHTML.substring(0, 500));
       return;
     }
     
@@ -824,12 +840,24 @@ const displaySearchResults = (contacts) => {
       tempContainer.innerHTML = `
         <div style="text-align: center; padding: 20px; color: #6c757d; font-size: 13px;">
           <p style="margin-bottom: 12px; font-size: 14px;">😕 No contacts found</p>
-          <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term or create a new contact</p>
-          <button class="odoo-contact-create-new-btn" id="show-create-contact-search-temp" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;">
-            ➕ Create New Contact
-          </button>
+          <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term</p>
+          <div style="display: flex; gap: 8px; justify-content: center;">
+            <button class="odoo-contact-back-btn" id="back-to-suggestions-temp" style="background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;">
+              ← Back to Suggestions
+            </button>
+            <button class="odoo-contact-create-new-btn" id="show-create-contact-search-temp" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;">
+              ➕ Create New Contact
+            </button>
+          </div>
         </div>
       `;
+      
+      modalContent.querySelector('#back-to-suggestions-temp')?.addEventListener('click', () => {
+        contactSearchInput.value = '';
+        tempContainer.style.display = 'none';
+        loadContactSuggestions();
+      });
+      
       modalContent.querySelector('#show-create-contact-search-temp')?.addEventListener('click', showQuickCreateForm);
       return;
     }
@@ -877,13 +905,36 @@ const displaySearchResults = (contacts) => {
       <div style="text-align: center; padding: 24px 16px; background: #f8f9fa; border-radius: 8px; margin: 8px 0;">
         <div style="font-size: 36px; margin-bottom: 12px;">😕</div>
         <p style="margin-bottom: 8px; font-size: 14px; color: #495057; font-weight: 500;">No contacts found</p>
-        <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term or create a new contact</p>
-        <button class="odoo-contact-create-new-btn" id="show-create-contact-search" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
-          ➕ Create New Contact
-        </button>
+        <p style="margin-bottom: 16px; font-size: 12px; color: #999;">Try a different search term</p>
+        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <button class="odoo-contact-back-btn" id="back-to-suggestions" style="background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+            ← Back to Suggestions
+          </button>
+          <button class="odoo-contact-create-new-btn" id="show-create-contact-search" style="background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+            ➕ Create New Contact
+          </button>
+        </div>
       </div>
     `;
     chipsContainer.style.display = 'block';
+    
+    const backBtn = modalContent.querySelector('#back-to-suggestions');
+    backBtn?.addEventListener('click', () => {
+      // Clear search input
+      contactSearchInput.value = '';
+      // Hide chips container
+      chipsContainer.style.display = 'none';
+      // Show suggestions again
+      loadContactSuggestions();
+    });
+    backBtn?.addEventListener('mouseenter', (e) => {
+      e.target.style.background = '#e9ecef';
+      e.target.style.transform = 'translateY(-2px)';
+    });
+    backBtn?.addEventListener('mouseleave', (e) => {
+      e.target.style.background = '#f8f9fa';
+      e.target.style.transform = 'translateY(0)';
+    });
     
     const createBtn = modalContent.querySelector('#show-create-contact-search');
     createBtn?.addEventListener('click', showQuickCreateForm);
