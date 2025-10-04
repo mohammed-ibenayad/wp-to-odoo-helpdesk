@@ -1,4 +1,6 @@
-/* AI Suggestion Modal Styles */
+/* AI Suggestion Modal Styles - CLEANED VERSION (No Animation Conflicts) */
+
+/* AI Modal Base */
 .odoo-ai-modal {
   position: fixed;
   top: 0;
@@ -91,121 +93,248 @@
   margin: 4px 0 0 0;
 }
 
-/* Messages Preview */
+/* Messages Preview - IMPROVED */
 .odoo-ai-messages-preview {
   background: #f8f9fa;
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   margin-bottom: 16px;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
 .odoo-ai-message-item {
   background: white;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  border-left: 3px solid #25D366;
-  font-size: 14px;
-  color: #495057;
-  line-height: 1.5;
+  padding: 14px 16px;
+  padding-right: 50px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 4px solid #667eea;
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.odoo-ai-message-item:hover {
+  transform: translateX(2px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+  border-left-color: #764ba2;
 }
 
 .odoo-ai-message-item:last-child {
   margin-bottom: 0;
 }
 
-.odoo-ai-message-meta {
+.odoo-ai-message-sender {
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.odoo-ai-message-time {
   font-size: 11px;
   color: #999;
-  margin-top: 6px;
+  font-weight: normal;
 }
 
-.odoo-ai-info-box {
-  background: rgba(0, 122, 255, 0.05);
-  border-left: 3px solid #007AFF;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 13px;
+.odoo-ai-message-content {
+  font-size: 14px;
   color: #495057;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.odoo-ai-info-box strong {
-  color: #007AFF;
-  font-weight: 600;
-}
-
-/* AI Analysis Section */
-.odoo-ai-analyze-section {
-  text-align: center;
-  padding: 30px 20px;
-}
-
-.odoo-ai-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.odoo-ai-message-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
+  border: none;
+  background: #dc3545;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
-  position: relative;
-  animation: iconPulse 2s infinite ease-in-out;
+  padding: 0;
 }
 
-/* Simple pulse animation like the mockup */
-@keyframes iconPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+.odoo-ai-message-item:hover .odoo-ai-message-remove {
+  opacity: 0.8;
+}
+
+.odoo-ai-message-remove:hover {
+  opacity: 1 !important;
+  transform: scale(1.15) rotate(90deg);
+  background: #c82333;
+}
+
+.odoo-ai-message-remove:active {
+  transform: scale(1.05) rotate(90deg);
+}
+
+/* Start Analysis Button */
+.odoo-ai-analyze-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 16px 36px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.odoo-ai-analyze-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.odoo-ai-analyze-btn:hover::before {
+  left: 100%;
+}
+
+.odoo-ai-analyze-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.45);
+}
+
+.odoo-ai-analyze-btn:active {
+  transform: translateY(-1px);
+}
+
+/* Analysis Section - SIMPLE SPINNER */
+.odoo-ai-analyze-section {
+  text-align: center;
+  padding: 50px 20px;
+  min-height: 400px;
+}
+
+.odoo-ai-spinner-container {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 40px;
+  position: relative;
+}
+
+.odoo-ai-spinner {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 6px solid #e9ecef;
+  border-top-color: #667eea;
+  border-right-color: #764ba2;
+  animation: simpleSpinner 1s linear infinite;
+}
+
+@keyframes simpleSpinner {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
+
+/* Progress Steps */
+.odoo-ai-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.odoo-ai-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  opacity: 0.4;
+  transition: all 0.6s ease;
+  transform: translateX(-20px);
+}
+
+.odoo-ai-progress-step.active {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-color: #667eea;
+  transform: translateX(0);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.odoo-ai-progress-step.complete {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.1) 0%, rgba(30, 169, 82, 0.05) 100%);
+  border-color: #25D366;
+}
+
+.odoo-ai-progress-step.warning {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+  border-color: #ff9800;
+}
+
+.odoo-ai-progress-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 50%;
+}
+
+.odoo-ai-progress-step.active .odoo-ai-progress-icon {
+  animation: iconBounce 0.6s ease-out;
+}
+
+@keyframes iconBounce {
+  0% {
+    transform: scale(0.5);
   }
   50% {
     transform: scale(1.1);
-    box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
-  }
-}
-
-/* Spinning border ring */
-.odoo-ai-icon::before {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.6);
-  border-right-color: rgba(255, 255, 255, 0.3);
-  animation: spin 1.5s linear infinite;
-  z-index: 1;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
   }
   100% {
-    transform: rotate(360deg);
+    transform: scale(1);
   }
 }
 
-.odoo-ai-analyzing-text {
-  color: #6c757d;
-  font-size: 14px;
-  animation: fadeInOut 2s infinite;
+.odoo-ai-progress-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: #495057;
+  flex: 1;
+  text-align: left;
 }
 
-.odoo-ai-analyzing-text p {
-  margin: 8px 0;
+.odoo-ai-progress-step.active .odoo-ai-progress-text {
+  color: #667eea;
+  font-weight: 600;
 }
 
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
 /* Suggestions Grid */
 .odoo-ai-suggestions-grid {
   display: grid;
@@ -443,6 +572,23 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
+}
+
+/* Info Box */
+.odoo-ai-info-box {
+  background: rgba(0, 122, 255, 0.05);
+  border-left: 3px solid #007AFF;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #495057;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.odoo-ai-info-box strong {
+  color: #007AFF;
+  font-weight: 600;
 }
 
 /* Final Actions */

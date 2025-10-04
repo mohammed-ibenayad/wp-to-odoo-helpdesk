@@ -1,4 +1,4 @@
-// AI Suggestion Modal - WITH REAL AI INTEGRATION
+// AI Suggestion Modal - IMPROVED UX WITH MANUAL START
 // Updated to use AIAnalysisManager
 
 (function() {
@@ -6,12 +6,13 @@
   
   class AISuggestionModal {
     constructor(messages, conversationData) {
-      this.messages = messages;
+      this.messages = [...messages]; // Clone array so we can modify it
       this.conversationData = conversationData;
       this.selectedSuggestion = null;
       this.suggestions = null;
       this.modal = null;
       this.aiProvider = null;
+      this.analysisStarted = false;
     }
     
     async show() {
@@ -29,20 +30,23 @@
       const modalContent = document.createElement('div');
       modalContent.className = 'odoo-ai-modal-content';
       
-      // Step 1: Selected Messages
+      // Step 1: Review Messages (ALWAYS SHOWN FIRST)
       const step1 = this.renderStep1();
       modalContent.appendChild(step1);
       
-      // Step 2: AI Analysis (shown during loading)
+      // Step 2: AI Analysis (HIDDEN INITIALLY)
       const step2 = this.renderStep2();
       modalContent.appendChild(step2);
       
-      // Step 3: Suggestions (will be shown after analysis)
+      // Step 3: Suggestions (HIDDEN INITIALLY)
       const step3 = this.renderStep3();
       modalContent.appendChild(step3);
       
       this.modal.appendChild(modalContent);
       document.body.appendChild(this.modal);
+      
+      // Set up event listeners
+      this.setupEventListeners();
       
       // Close on backdrop click
       this.modal.addEventListener('click', (e) => {
@@ -58,32 +62,54 @@
         }
       };
       document.addEventListener('keydown', this.escapeHandler);
+    }
+    
+    setupEventListeners() {
+      // Message removal buttons
+      const removeButtons = document.querySelectorAll('.odoo-ai-message-remove');
+      removeButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const index = parseInt(btn.getAttribute('data-index'));
+          this.removeMessage(index);
+        });
+      });
       
-      // AUTO-START ANALYSIS
-      setTimeout(() => {
-        this.analyzeMessages();
-      }, 500);
+      // Start analysis button
+      const analyzeBtn = document.getElementById('start-analysis-btn');
+      if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', () => {
+          this.startAnalysis();
+        });
+      }
     }
     
     renderStep1() {
       const step = document.createElement('div');
       step.className = 'odoo-ai-step-card';
+      step.id = 'odoo-ai-step-1';
       
       step.innerHTML = `
         <div class="odoo-ai-step-header">
           <div class="odoo-ai-step-number">1</div>
           <div class="odoo-ai-step-info">
-            <div class="odoo-ai-step-title">Selected Messages</div>
-            <div class="odoo-ai-step-subtitle">${this.messages.length} message${this.messages.length !== 1 ? 's' : ''} selected from conversation</div>
+            <div class="odoo-ai-step-title">Review Selected Messages</div>
+            <div class="odoo-ai-step-subtitle" id="step1-subtitle">${this.messages.length} message${this.messages.length !== 1 ? 's' : ''} selected · Hover to remove</div>
           </div>
         </div>
         
-        <div class="odoo-ai-messages-preview">
+        <div class="odoo-ai-messages-preview" id="ai-messages-preview">
           ${this.renderMessages()}
         </div>
         
-        <div class="odoo-ai-info-box">
-          <strong>Contact Detected:</strong> ${this.conversationData.contactName} ${this.conversationData.contactNumber ? '(' + this.conversationData.contactNumber + ')' : ''}
+        <div style="text-align: center; margin-top: 24px;">
+          <button class="odoo-ai-analyze-btn" id="start-analysis-btn">
+            <svg style="width: 20px; height: 20px; margin-right: 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9 11l3 3 8-8"/>
+            </svg>
+            Start AI Analysis (${this.messages.length} message${this.messages.length !== 1 ? 's' : ''})
+          </button>
         </div>
       `;
       
@@ -91,43 +117,114 @@
     }
     
     renderMessages() {
-      return this.messages.map(msg => {
-        const sender = msg.senderType === 'customer' ? '<strong>Customer:</strong>' : '<strong>Agent:</strong>';
+      if (this.messages.length === 0) {
+        return '<div style="text-align: center; padding: 40px; color: #999;">No messages selected</div>';
+      }
+      
+      return this.messages.map((msg, index) => {
+        const sender = msg.senderType === 'customer' 
+          ? '<strong style="color: #667eea;">Customer</strong>' 
+          : '<strong style="color: #764ba2;">Agent</strong>';
+        
         const time = new Date(msg.timestamp).toLocaleString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
           hour12: true
         });
         
+        const preview = msg.content.length > 150 
+          ? msg.content.substring(0, 150) + '...' 
+          : msg.content;
+        
         return `
-          <div class="odoo-ai-message-item">
-            ${sender} ${msg.content}
-            <div class="odoo-ai-message-meta">Today at ${time}</div>
+          <div class="odoo-ai-message-item" data-message-index="${index}">
+            <button class="odoo-ai-message-remove" data-index="${index}" title="Remove this message">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <div class="odoo-ai-message-sender">${sender} <span class="odoo-ai-message-time">${time}</span></div>
+            <div class="odoo-ai-message-content">${preview}</div>
           </div>
         `;
       }).join('');
+    }
+    
+    removeMessage(index) {
+      console.log('Removing message at index:', index);
+      
+      // Remove message from array
+      this.messages.splice(index, 1);
+      
+      // Check if we still have messages
+      if (this.messages.length === 0) {
+        alert('You must have at least one message selected');
+        this.close(null);
+        return;
+      }
+      
+      // Re-render messages
+      const preview = document.getElementById('ai-messages-preview');
+      if (preview) {
+        preview.innerHTML = this.renderMessages();
+        
+        // Re-attach event listeners
+        this.setupEventListeners();
+      }
+      
+      // Update subtitle
+      const subtitle = document.getElementById('step1-subtitle');
+      if (subtitle) {
+        subtitle.textContent = `${this.messages.length} message${this.messages.length !== 1 ? 's' : ''} selected · Hover to remove`;
+      }
+      
+      // Update button text
+      const analyzeBtn = document.getElementById('start-analysis-btn');
+      if (analyzeBtn) {
+        analyzeBtn.innerHTML = `
+          <svg style="width: 20px; height: 20px; margin-right: 8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9 11l3 3 8-8"/>
+          </svg>
+          Start AI Analysis (${this.messages.length} message${this.messages.length !== 1 ? 's' : ''})
+        `;
+      }
     }
     
     renderStep2() {
       const step = document.createElement('div');
       step.className = 'odoo-ai-step-card';
       step.id = 'odoo-ai-step-2';
+      step.style.display = 'none';
       
       step.innerHTML = `
         <div class="odoo-ai-step-header">
           <div class="odoo-ai-step-number">2</div>
           <div class="odoo-ai-step-info">
-            <div class="odoo-ai-step-title">AI Analysis</div>
-            <div class="odoo-ai-step-subtitle">Analyzing conversation context and intent</div>
+            <div class="odoo-ai-step-title">AI Analysis in Progress</div>
+            <div class="odoo-ai-step-subtitle">Analyzing your conversation...</div>
           </div>
         </div>
         
         <div class="odoo-ai-analyze-section">
-          <div class="odoo-ai-icon">🧠</div>
-          <div class="odoo-ai-analyzing-text" id="ai-status-text">
-            <p>🔍 Analyzing conversation tone and urgency...</p>
-            <p>📊 Identifying key entities and requirements...</p>
-            <p>🎯 Generating recommendations...</p>
+          <div class="odoo-ai-spinner-container">
+            <div class="odoo-ai-spinner"></div>
+          </div>
+          
+          <div class="odoo-ai-progress-steps" id="ai-progress-steps">
+            <div class="odoo-ai-progress-step" data-step="1">
+              <div class="odoo-ai-progress-icon">🔍</div>
+              <div class="odoo-ai-progress-text">Analyzing ${this.messages.length} messages...</div>
+            </div>
+            <div class="odoo-ai-progress-step" data-step="2">
+              <div class="odoo-ai-progress-icon">📊</div>
+              <div class="odoo-ai-progress-text">Evaluating conversation context...</div>
+            </div>
+            <div class="odoo-ai-progress-step" data-step="3">
+              <div class="odoo-ai-progress-icon">🎯</div>
+              <div class="odoo-ai-progress-text">Generating smart recommendations...</div>
+            </div>
           </div>
         </div>
       `;
@@ -146,7 +243,7 @@
           <div class="odoo-ai-step-number">3</div>
           <div class="odoo-ai-step-info">
             <div class="odoo-ai-step-title">AI Recommendations</div>
-            <div class="odoo-ai-step-subtitle" id="ai-provider-subtitle">Review and select the best action</div>
+            <div class="odoo-ai-step-subtitle" id="ai-provider-subtitle">Select the best action</div>
           </div>
         </div>
         
@@ -155,27 +252,42 @@
         </div>
         
         <div class="odoo-ai-info-box">
-          <strong>💡 Pro Tip:</strong> You can edit any suggestion before creating it, or choose a different type if AI's recommendation doesn't match your needs.
+          <strong>💡 Tip:</strong> Select a recommendation below, or click "Edit" to customize it before creating.
         </div>
         
         <div class="odoo-ai-final-actions">
-          <button class="odoo-ai-final-btn create" id="odoo-ai-create-btn" disabled>Create Selected Item</button>
           <button class="odoo-ai-final-btn cancel" id="odoo-ai-cancel-btn">Cancel</button>
+          <button class="odoo-ai-final-btn create" id="odoo-ai-create-btn" disabled>Create Selected</button>
         </div>
       `;
       
       return step;
     }
     
-    async analyzeMessages() {
-      const step2 = document.getElementById('odoo-ai-step-2');
-      const statusText = document.getElementById('ai-status-text');
+    startAnalysis() {
+      if (this.analysisStarted) return;
+      this.analysisStarted = true;
       
+      console.log('🚀 Starting AI analysis...');
+      
+      // Hide step 1, show step 2
+      const step1 = document.getElementById('odoo-ai-step-1');
+      const step2 = document.getElementById('odoo-ai-step-2');
+      
+      if (step1) step1.style.display = 'none';
+      if (step2) {
+        step2.style.display = 'block';
+        step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      
+      // Start the actual analysis
+      this.analyzeMessages();
+    }
+    
+    async analyzeMessages() {
       try {
-        // Update status
-        statusText.innerHTML = `
-          <p>🤖 Initializing AI provider...</p>
-        `;
+        // Animate progress steps
+        this.animateProgressSteps();
         
         // Get selected provider
         const providerName = await window.AIConfigManager.getSelectedProvider();
@@ -183,21 +295,8 @@
         
         console.log(`🤖 Using AI provider: ${providerInfo.name}`);
         
-        // Update status
-        statusText.innerHTML = `
-          <p>🤖 Connecting to ${providerInfo.name}...</p>
-          <p style="font-size: 12px; color: #999;">Model: ${providerInfo.model}</p>
-        `;
-        
         // Create analyzer
         this.aiProvider = new window.AIAnalysisManager(providerName);
-        
-        // Update status
-        statusText.innerHTML = `
-          <p>🔍 Analyzing ${this.messages.length} messages...</p>
-          <p>📊 Evaluating conversation context...</p>
-          <p>🎯 Generating smart recommendations...</p>
-        `;
         
         // Perform AI analysis
         const result = await this.aiProvider.analyzeConversation(
@@ -209,15 +308,12 @@
           this.suggestions = result.suggestions;
           console.log('✅ AI Analysis successful:', this.suggestions);
           
-          // Show success and transition to suggestions
-          statusText.innerHTML = `
-            <p style="color: #25D366; font-weight: 600;">✅ Analysis complete!</p>
-            <p style="font-size: 12px; color: #666;">Powered by ${result.provider}</p>
-          `;
+          // Show success state briefly
+          this.showAnalysisComplete(result.provider);
           
           setTimeout(() => {
             this.showSuggestions(result.provider);
-          }, 1000);
+          }, 1200);
           
         } else {
           console.warn('⚠️ AI Analysis failed, using fallback:', result.error);
@@ -225,20 +321,57 @@
           // Use fallback suggestions
           this.suggestions = result.fallback;
           
-          // Show warning
-          statusText.innerHTML = `
-            <p style="color: #ff9800; font-weight: 600;">⚠️ Using automated analysis</p>
-            <p style="font-size: 12px; color: #666;">${result.error}</p>
-          `;
+          // Show warning state
+          this.showAnalysisWarning(result.error);
           
           setTimeout(() => {
             this.showSuggestions('Automated Analysis');
-          }, 1500);
+          }, 1800);
         }
         
       } catch (error) {
         console.error('❌ Critical error in AI analysis:', error);
         this.showErrorState(error.message);
+      }
+    }
+    
+    animateProgressSteps() {
+      const steps = document.querySelectorAll('.odoo-ai-progress-step');
+      
+      steps.forEach((step, index) => {
+        setTimeout(() => {
+          step.classList.add('active');
+        }, index * 1000);
+      });
+    }
+    
+    showAnalysisComplete(providerName) {
+      const progressContainer = document.getElementById('ai-progress-steps');
+      if (progressContainer) {
+        progressContainer.innerHTML = `
+          <div class="odoo-ai-progress-step active complete">
+            <div class="odoo-ai-progress-icon">✅</div>
+            <div class="odoo-ai-progress-text">Analysis complete!</div>
+          </div>
+          <div style="text-align: center; margin-top: 12px; font-size: 13px; color: #666;">
+            Powered by ${providerName}
+          </div>
+        `;
+      }
+    }
+    
+    showAnalysisWarning(errorMessage) {
+      const progressContainer = document.getElementById('ai-progress-steps');
+      if (progressContainer) {
+        progressContainer.innerHTML = `
+          <div class="odoo-ai-progress-step active warning">
+            <div class="odoo-ai-progress-icon">⚠️</div>
+            <div class="odoo-ai-progress-text">Using automated analysis</div>
+          </div>
+          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: #ff9800;">
+            ${errorMessage}
+          </div>
+        `;
       }
     }
     
@@ -281,23 +414,25 @@
         <div class="odoo-ai-step-header">
           <div class="odoo-ai-step-number">2</div>
           <div class="odoo-ai-step-info">
-            <div class="odoo-ai-step-title">AI Analysis Failed</div>
-            <div class="odoo-ai-step-subtitle">Unable to complete analysis</div>
+            <div class="odoo-ai-step-title">Analysis Failed</div>
+            <div class="odoo-ai-step-subtitle">Unable to complete AI analysis</div>
           </div>
         </div>
         
         <div class="odoo-ai-analyze-section">
-          <div class="odoo-ai-icon" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); animation: none;">⚠️</div>
+          <div class="odoo-ai-brain-container">
+            <div class="odoo-ai-brain" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">⚠️</div>
+          </div>
           <div style="text-align: center; padding: 20px;">
-            <p style="color: #dc3545; font-weight: 600; margin-bottom: 12px;">
+            <p style="color: #dc3545; font-weight: 600; margin-bottom: 12px; font-size: 15px;">
               ${errorMessage}
             </p>
             <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
-              Please check your AI configuration and try again, or proceed with manual creation.
+              Please check your AI configuration in the extension settings.
             </p>
             <div style="display: flex; gap: 12px; justify-content: center;">
               <button class="odoo-ai-final-btn cancel" id="retry-analysis-btn">🔄 Retry</button>
-              <button class="odoo-ai-final-btn cancel" id="manual-create-btn">✏️ Create Manually</button>
+              <button class="odoo-ai-final-btn cancel" id="back-to-messages-btn">← Back</button>
             </div>
           </div>
         </div>
@@ -305,13 +440,20 @@
       
       // Add retry handler
       document.getElementById('retry-analysis-btn').addEventListener('click', () => {
+        this.analysisStarted = false;
         step2.innerHTML = this.renderStep2().innerHTML;
         this.analyzeMessages();
       });
       
-      // Add manual create handler
-      document.getElementById('manual-create-btn').addEventListener('click', () => {
-        this.close({ manualMode: true });
+      // Add back handler
+      document.getElementById('back-to-messages-btn').addEventListener('click', () => {
+        this.analysisStarted = false;
+        const step1 = document.getElementById('odoo-ai-step-1');
+        step2.style.display = 'none';
+        if (step1) {
+          step1.style.display = 'block';
+          step1.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       });
     }
     
@@ -319,7 +461,11 @@
       const grid = document.getElementById('odoo-ai-suggestions-grid');
       
       // Sort by confidence
-      const sorted = Object.values(this.suggestions).sort((a, b) => b.confidence - a.confidence);
+      const types = ['ticket', 'task', 'lead'];
+      const sorted = types
+        .map(type => ({ ...this.suggestions[type], type }))
+        .sort((a, b) => b.confidence - a.confidence);
+      
       const recommended = sorted[0];
       
       grid.innerHTML = sorted.map(suggestion => {
@@ -327,26 +473,21 @@
         const priorityStars = '⭐'.repeat(parseInt(suggestion.priority));
         const priorityLabels = { '0': 'None', '1': 'Low', '2': 'Medium', '3': 'High' };
         
-        // Determine type from suggestions object
-        let type = 'ticket';
-        if (suggestion === this.suggestions.task) type = 'task';
-        if (suggestion === this.suggestions.lead) type = 'lead';
-        
         return `
-          <div class="odoo-ai-suggestion-card ${isRecommended ? 'recommended' : ''}" data-type="${type}">
+          <div class="odoo-ai-suggestion-card ${isRecommended ? 'recommended' : ''}" data-type="${suggestion.type}">
             <div class="odoo-ai-suggestion-header">
               <div class="odoo-ai-suggestion-type">
-                <div class="odoo-ai-type-icon ${type}">
-                  ${type === 'ticket' ? '🎫' : type === 'task' ? '✓' : '👤'}
+                <div class="odoo-ai-type-icon ${suggestion.type}">
+                  ${suggestion.type === 'ticket' ? '🎫' : suggestion.type === 'task' ? '✓' : '👤'}
                 </div>
-                <div class="odoo-ai-type-name">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                <div class="odoo-ai-type-name">${suggestion.type.charAt(0).toUpperCase() + suggestion.type.slice(1)}</div>
               </div>
               ${isRecommended ? '<div class="odoo-ai-recommended-badge">Recommended</div>' : ''}
             </div>
             
             <div class="odoo-ai-confidence-bar">
               <div class="odoo-ai-confidence-label">
-                <span>AI Confidence</span>
+                <span>Confidence</span>
                 <span><strong>${suggestion.confidence}%</strong></span>
               </div>
               <div class="odoo-ai-confidence-progress">
@@ -356,7 +497,7 @@
             
             <div class="odoo-ai-reasoning">
               <div class="odoo-ai-reasoning-title">
-                <span>💡</span> Why ${type === 'ticket' ? 'a Ticket' : type === 'task' ? 'a Task' : 'a Lead'}?
+                <span>💡</span> Why ${suggestion.type === 'ticket' ? 'a Ticket' : suggestion.type === 'task' ? 'a Task' : 'a Lead'}?
               </div>
               <div class="odoo-ai-reasoning-text">
                 ${suggestion.reasoning}
@@ -370,7 +511,7 @@
               </div>
               <div class="odoo-ai-detail-item">
                 <div class="odoo-ai-detail-label">Priority:</div>
-                <div class="odoo-ai-detail-value">${priorityStars} ${priorityLabels[suggestion.priority]}</div>
+                <div class="odoo-ai-detail-value">${priorityStars || '—'} ${priorityLabels[suggestion.priority]}</div>
               </div>
             </div>
             
@@ -406,12 +547,9 @@
       });
       
       // Auto-select recommended
-      const recommendedType = Object.keys(this.suggestions).find(
-        key => this.suggestions[key] === recommended
-      );
       setTimeout(() => {
-        this.selectSuggestion(recommendedType);
-      }, 500);
+        this.selectSuggestion(recommended.type);
+      }, 300);
     }
     
     selectSuggestion(type) {
@@ -428,15 +566,13 @@
       const btn = card.querySelector('[data-action="select"]');
       btn.innerHTML = '✓ Selected';
       
-      this.selectedSuggestion = this.suggestions[type];
-      this.selectedSuggestion.type = type; // Store type
+      this.selectedSuggestion = { ...this.suggestions[type], type };
       
       // Enable create button
       document.getElementById('odoo-ai-create-btn').disabled = false;
     }
     
     editSuggestion(type) {
-      // Close AI modal and open standard modal with pre-filled data
       const suggestion = this.suggestions[type];
       
       this.close({
@@ -457,7 +593,6 @@
       createBtn.disabled = true;
       createBtn.textContent = 'Creating...';
       
-      // Return the selected suggestion to be created
       this.close({
         create: true,
         type: this.selectedSuggestion.type,
@@ -487,5 +622,5 @@
   // Make available globally
   window.AISuggestionModal = AISuggestionModal;
   
-  console.log('✅ AISuggestionModal loaded with AI integration');
+  console.log('✅ AISuggestionModal loaded - Improved UX');
 })();
