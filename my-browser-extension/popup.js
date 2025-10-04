@@ -565,7 +565,11 @@ class AIConfigManager {
   
   showStatus(message, type) {
     const status = document.getElementById('status');
-    if (!status) return;
+    if (!status) {
+      console.error('❌ Status element not found!');
+      alert(message); // Fallback to alert
+      return;
+    }
     
     // Clear any existing content
     status.innerHTML = '';
@@ -598,6 +602,9 @@ class AIConfigManager {
       }, 5000);
     }
     // Error and info messages stay visible until manually closed
+    
+    // Scroll to status if needed
+    status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
