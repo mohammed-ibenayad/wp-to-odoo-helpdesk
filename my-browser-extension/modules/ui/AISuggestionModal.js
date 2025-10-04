@@ -1,5 +1,5 @@
-// AI Suggestion Modal - Chrome Extension Compatible
-// No imports/exports - using global window object
+// AI Suggestion Modal - WITH REAL AI INTEGRATION
+// Updated to use AIAnalysisManager
 
 (function() {
   'use strict';
@@ -11,6 +11,7 @@
       this.selectedSuggestion = null;
       this.suggestions = null;
       this.modal = null;
+      this.aiProvider = null;
     }
     
     async show() {
@@ -58,7 +59,7 @@
       };
       document.addEventListener('keydown', this.escapeHandler);
       
-      // AUTO-START ANALYSIS - No button needed
+      // AUTO-START ANALYSIS
       setTimeout(() => {
         this.analyzeMessages();
       }, 500);
@@ -123,7 +124,7 @@
         
         <div class="odoo-ai-analyze-section">
           <div class="odoo-ai-icon">🧠</div>
-          <div class="odoo-ai-analyzing-text">
+          <div class="odoo-ai-analyzing-text" id="ai-status-text">
             <p>🔍 Analyzing conversation tone and urgency...</p>
             <p>📊 Identifying key entities and requirements...</p>
             <p>🎯 Generating recommendations...</p>
@@ -145,7 +146,7 @@
           <div class="odoo-ai-step-number">3</div>
           <div class="odoo-ai-step-info">
             <div class="odoo-ai-step-title">AI Recommendations</div>
-            <div class="odoo-ai-step-subtitle">Review and select the best action</div>
+            <div class="odoo-ai-step-subtitle" id="ai-provider-subtitle">Review and select the best action</div>
           </div>
         </div>
         
@@ -167,144 +168,151 @@
     }
     
     async analyzeMessages() {
-      // AI analysis already started automatically
       const step2 = document.getElementById('odoo-ai-step-2');
+      const statusText = document.getElementById('ai-status-text');
       
-      // Perform AI analysis
-      await this.performAIAnalysis();
-      
-      // Hide step 2 and show suggestions
-      setTimeout(() => {
-        if (step2) {
-          step2.style.display = 'none';
+      try {
+        // Update status
+        statusText.innerHTML = `
+          <p>🤖 Initializing AI provider...</p>
+        `;
+        
+        // Get selected provider
+        const providerName = await window.AIConfigManager.getSelectedProvider();
+        const providerInfo = window.AI_PROVIDERS[providerName];
+        
+        console.log(`🤖 Using AI provider: ${providerInfo.name}`);
+        
+        // Update status
+        statusText.innerHTML = `
+          <p>🤖 Connecting to ${providerInfo.name}...</p>
+          <p style="font-size: 12px; color: #999;">Model: ${providerInfo.model}</p>
+        `;
+        
+        // Create analyzer
+        this.aiProvider = new window.AIAnalysisManager(providerName);
+        
+        // Update status
+        statusText.innerHTML = `
+          <p>🔍 Analyzing ${this.messages.length} messages...</p>
+          <p>📊 Evaluating conversation context...</p>
+          <p>🎯 Generating smart recommendations...</p>
+        `;
+        
+        // Perform AI analysis
+        const result = await this.aiProvider.analyzeConversation(
+          this.messages,
+          this.conversationData
+        );
+        
+        if (result.success) {
+          this.suggestions = result.suggestions;
+          console.log('✅ AI Analysis successful:', this.suggestions);
+          
+          // Show success and transition to suggestions
+          statusText.innerHTML = `
+            <p style="color: #25D366; font-weight: 600;">✅ Analysis complete!</p>
+            <p style="font-size: 12px; color: #666;">Powered by ${result.provider}</p>
+          `;
+          
+          setTimeout(() => {
+            this.showSuggestions(result.provider);
+          }, 1000);
+          
+        } else {
+          console.warn('⚠️ AI Analysis failed, using fallback:', result.error);
+          
+          // Use fallback suggestions
+          this.suggestions = result.fallback;
+          
+          // Show warning
+          statusText.innerHTML = `
+            <p style="color: #ff9800; font-weight: 600;">⚠️ Using automated analysis</p>
+            <p style="font-size: 12px; color: #666;">${result.error}</p>
+          `;
+          
+          setTimeout(() => {
+            this.showSuggestions('Automated Analysis');
+          }, 1500);
         }
         
-        const step3 = document.getElementById('odoo-ai-step-3');
-        step3.style.display = 'block';
-        this.renderSuggestions();
-        
-        // Scroll to suggestions
-        step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        // Add event listeners for final actions
-        document.getElementById('odoo-ai-create-btn').addEventListener('click', () => {
-          this.createSelectedItem();
-        });
-        
-        document.getElementById('odoo-ai-cancel-btn').addEventListener('click', () => {
-          this.close(null);
-        });
-      }, 2000); // 2 seconds for AI analysis animation
+      } catch (error) {
+        console.error('❌ Critical error in AI analysis:', error);
+        this.showErrorState(error.message);
+      }
     }
     
-    async performAIAnalysis() {
-      // This is where you would call your AI API
-      // For now, we'll create mock suggestions based on message content
+    showSuggestions(providerName) {
+      const step2 = document.getElementById('odoo-ai-step-2');
+      const step3 = document.getElementById('odoo-ai-step-3');
       
-      const combinedContent = this.messages.map(m => m.content).join(' ').toLowerCase();
-      
-      // Analyze content to determine what to create
-      let ticketConfidence = 50;
-      let taskConfidence = 30;
-      let leadConfidence = 20;
-      
-      // Keywords that increase ticket confidence
-      const ticketKeywords = ['problem', 'issue', 'help', 'not working', 'broken', 'error', 'trouble', 'support'];
-      const taskKeywords = ['need to', 'please', 'can you', 'could you', 'schedule', 'arrange', 'setup'];
-      const leadKeywords = ['interested', 'quote', 'price', 'buy', 'purchase', 'how much', 'demo'];
-      
-      // Calculate confidence scores
-      ticketKeywords.forEach(keyword => {
-        if (combinedContent.includes(keyword)) ticketConfidence += 10;
-      });
-      
-      taskKeywords.forEach(keyword => {
-        if (combinedContent.includes(keyword)) taskConfidence += 8;
-      });
-      
-      leadKeywords.forEach(keyword => {
-        if (combinedContent.includes(keyword)) leadConfidence += 12;
-      });
-      
-      // Normalize to 100
-      const total = ticketConfidence + taskConfidence + leadConfidence;
-      ticketConfidence = Math.round((ticketConfidence / total) * 100);
-      taskConfidence = Math.round((taskConfidence / total) * 100);
-      leadConfidence = 100 - ticketConfidence - taskConfidence;
-      
-      // Determine priority based on keywords
-      let priority = '1'; // Normal
-      if (combinedContent.includes('urgent') || combinedContent.includes('asap')) {
-        priority = '3'; // High
-      } else if (combinedContent.includes('important') || combinedContent.includes('soon')) {
-        priority = '2'; // Medium
+      // Hide analysis step
+      if (step2) {
+        step2.style.display = 'none';
       }
       
-      // Generate suggestions
-      this.suggestions = {
-        ticket: {
-          type: 'ticket',
-          confidence: ticketConfidence,
-          title: this.generateTitle('ticket'),
-          priority: priority,
-          category: 'Support Request',
-          reasoning: this.generateReasoning('ticket', combinedContent)
-        },
-        task: {
-          type: 'task',
-          confidence: taskConfidence,
-          title: this.generateTitle('task'),
-          priority: priority,
-          assignedTo: 'Support Team',
-          reasoning: this.generateReasoning('task', combinedContent)
-        },
-        lead: {
-          type: 'lead',
-          confidence: leadConfidence,
-          title: this.generateTitle('lead'),
-          priority: priority,
-          reasoning: this.generateReasoning('lead', combinedContent)
-        }
-      };
+      // Update subtitle with provider info
+      const subtitle = document.getElementById('ai-provider-subtitle');
+      if (subtitle) {
+        subtitle.textContent = `Powered by ${providerName}`;
+      }
+      
+      // Show suggestions step
+      step3.style.display = 'block';
+      this.renderSuggestions();
+      
+      // Scroll to suggestions
+      step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Add event listeners for final actions
+      document.getElementById('odoo-ai-create-btn').addEventListener('click', () => {
+        this.createSelectedItem();
+      });
+      
+      document.getElementById('odoo-ai-cancel-btn').addEventListener('click', () => {
+        this.close(null);
+      });
     }
     
-    generateTitle(type) {
-      const firstMessage = this.messages[0].content;
-      const truncated = firstMessage.length > 50 ? firstMessage.substring(0, 50) + '...' : firstMessage;
+    showErrorState(errorMessage) {
+      const step2 = document.getElementById('odoo-ai-step-2');
       
-      const prefixes = {
-        ticket: 'Support Request',
-        task: 'Action Required',
-        lead: 'Sales Inquiry'
-      };
+      step2.innerHTML = `
+        <div class="odoo-ai-step-header">
+          <div class="odoo-ai-step-number">2</div>
+          <div class="odoo-ai-step-info">
+            <div class="odoo-ai-step-title">AI Analysis Failed</div>
+            <div class="odoo-ai-step-subtitle">Unable to complete analysis</div>
+          </div>
+        </div>
+        
+        <div class="odoo-ai-analyze-section">
+          <div class="odoo-ai-icon" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); animation: none;">⚠️</div>
+          <div style="text-align: center; padding: 20px;">
+            <p style="color: #dc3545; font-weight: 600; margin-bottom: 12px;">
+              ${errorMessage}
+            </p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
+              Please check your AI configuration and try again, or proceed with manual creation.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="odoo-ai-final-btn cancel" id="retry-analysis-btn">🔄 Retry</button>
+              <button class="odoo-ai-final-btn cancel" id="manual-create-btn">✏️ Create Manually</button>
+            </div>
+          </div>
+        </div>
+      `;
       
-      return `${prefixes[type]}: ${truncated}`;
-    }
-    
-    generateReasoning(type, content) {
-      const reasonings = {
-        ticket: {
-          high: 'Customer reports an issue requiring immediate resolution. Contains support-related keywords.',
-          medium: 'Conversation indicates a customer service matter that needs tracking and follow-up.',
-          low: 'Content suggests general inquiry rather than specific issue.'
-        },
-        task: {
-          high: 'Contains actionable items and specific requests that require internal team action.',
-          medium: 'Includes elements that could be tracked as internal tasks.',
-          low: 'Primarily customer-facing communication, not suitable for internal task tracking.'
-        },
-        lead: {
-          high: 'Contains sales intent and interest in products/services.',
-          medium: 'Shows potential interest that could be developed into sales opportunity.',
-          low: 'Existing customer support case, not a new sales opportunity.'
-        }
-      };
+      // Add retry handler
+      document.getElementById('retry-analysis-btn').addEventListener('click', () => {
+        step2.innerHTML = this.renderStep2().innerHTML;
+        this.analyzeMessages();
+      });
       
-      const confidence = this.suggestions ? this.suggestions[type].confidence : 50;
-      
-      if (confidence >= 70) return reasonings[type].high;
-      if (confidence >= 40) return reasonings[type].medium;
-      return reasonings[type].low;
+      // Add manual create handler
+      document.getElementById('manual-create-btn').addEventListener('click', () => {
+        this.close({ manualMode: true });
+      });
     }
     
     renderSuggestions() {
@@ -317,16 +325,21 @@
       grid.innerHTML = sorted.map(suggestion => {
         const isRecommended = suggestion === recommended;
         const priorityStars = '⭐'.repeat(parseInt(suggestion.priority));
-        const priorityLabels = { '1': 'Low', '2': 'Medium', '3': 'High' };
+        const priorityLabels = { '0': 'None', '1': 'Low', '2': 'Medium', '3': 'High' };
+        
+        // Determine type from suggestions object
+        let type = 'ticket';
+        if (suggestion === this.suggestions.task) type = 'task';
+        if (suggestion === this.suggestions.lead) type = 'lead';
         
         return `
-          <div class="odoo-ai-suggestion-card ${isRecommended ? 'recommended' : ''}" data-type="${suggestion.type}">
+          <div class="odoo-ai-suggestion-card ${isRecommended ? 'recommended' : ''}" data-type="${type}">
             <div class="odoo-ai-suggestion-header">
               <div class="odoo-ai-suggestion-type">
-                <div class="odoo-ai-type-icon ${suggestion.type}">
-                  ${suggestion.type === 'ticket' ? '🎫' : suggestion.type === 'task' ? '✓' : '👤'}
+                <div class="odoo-ai-type-icon ${type}">
+                  ${type === 'ticket' ? '🎫' : type === 'task' ? '✓' : '👤'}
                 </div>
-                <div class="odoo-ai-type-name">${suggestion.type.charAt(0).toUpperCase() + suggestion.type.slice(1)}</div>
+                <div class="odoo-ai-type-name">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
               </div>
               ${isRecommended ? '<div class="odoo-ai-recommended-badge">Recommended</div>' : ''}
             </div>
@@ -343,7 +356,7 @@
             
             <div class="odoo-ai-reasoning">
               <div class="odoo-ai-reasoning-title">
-                <span>💡</span> Why ${suggestion.type === 'ticket' ? 'a Ticket' : suggestion.type === 'task' ? 'a Task' : 'a Lead'}?
+                <span>💡</span> Why ${type === 'ticket' ? 'a Ticket' : type === 'task' ? 'a Task' : 'a Lead'}?
               </div>
               <div class="odoo-ai-reasoning-text">
                 ${suggestion.reasoning}
@@ -359,18 +372,6 @@
                 <div class="odoo-ai-detail-label">Priority:</div>
                 <div class="odoo-ai-detail-value">${priorityStars} ${priorityLabels[suggestion.priority]}</div>
               </div>
-              ${suggestion.category ? `
-                <div class="odoo-ai-detail-item">
-                  <div class="odoo-ai-detail-label">Category:</div>
-                  <div class="odoo-ai-detail-value">${suggestion.category}</div>
-                </div>
-              ` : ''}
-              ${suggestion.assignedTo ? `
-                <div class="odoo-ai-detail-item">
-                  <div class="odoo-ai-detail-label">Assigned:</div>
-                  <div class="odoo-ai-detail-value">${suggestion.assignedTo}</div>
-                </div>
-              ` : ''}
             </div>
             
             <div class="odoo-ai-suggestion-actions">
@@ -405,7 +406,9 @@
       });
       
       // Auto-select recommended
-      const recommendedType = recommended.type;
+      const recommendedType = Object.keys(this.suggestions).find(
+        key => this.suggestions[key] === recommended
+      );
       setTimeout(() => {
         this.selectSuggestion(recommendedType);
       }, 500);
@@ -426,15 +429,13 @@
       btn.innerHTML = '✓ Selected';
       
       this.selectedSuggestion = this.suggestions[type];
+      this.selectedSuggestion.type = type; // Store type
       
       // Enable create button
       document.getElementById('odoo-ai-create-btn').disabled = false;
     }
     
     editSuggestion(type) {
-      // This would open the standard title modal with pre-filled data
-      console.log('Edit suggestion:', type);
-      
       // Close AI modal and open standard modal with pre-filled data
       const suggestion = this.suggestions[type];
       
@@ -486,5 +487,5 @@
   // Make available globally
   window.AISuggestionModal = AISuggestionModal;
   
-  console.log('✅ AISuggestionModal loaded');
+  console.log('✅ AISuggestionModal loaded with AI integration');
 })();

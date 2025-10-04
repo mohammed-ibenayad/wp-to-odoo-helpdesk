@@ -119,7 +119,8 @@
     input[type="text"],
     input[type="email"],
     input[type="password"],
-    input[type="url"] {
+    input[type="url"],
+    select {
       width: 100%;
       padding: 12px 15px;
       border: 2px solid #e1e5e9;
@@ -131,14 +132,25 @@
       font-family: inherit;
     }
     
-    input:focus {
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 40px;
+      cursor: pointer;
+    }
+    
+    input:focus,
+    select:focus {
       outline: none;
       border-color: #25D366;
       box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
       transform: translateY(-1px);
     }
     
-    input:hover:not(:focus) {
+    input:hover:not(:focus),
+    select:hover:not(:focus) {
       border-color: #c1c9d0;
     }
     
@@ -213,45 +225,140 @@
     
     .status {
       margin-top: 20px;
-      padding: 15px;
-      border-radius: 8px;
-      font-size: 13px;
-      text-align: center;
+      padding: 16px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: left;
       font-weight: 500;
-      animation: slideIn 0.3s ease-out;
+      animation: slideInStatus 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      align-items: flex-start;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      position: relative;
+      line-height: 1.5;
     }
     
-    @keyframes slideIn {
+    @keyframes slideInStatus {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(-20px) scale(0.9);
       }
       to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
       }
+    }
+    
+    .status::before {
+      content: '';
+      font-size: 24px;
+      flex-shrink: 0;
+      line-height: 1;
     }
     
     .status.success {
       background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
       color: #155724;
-      border: 1px solid #c3e6cb;
+      border: 2px solid #28a745;
+    }
+    
+    .status.success::before {
+      content: '✅';
+      animation: checkmarkPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.2s;
+      display: inline-block;
+    }
+    
+    @keyframes checkmarkPop {
+      0% {
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      100% {
+        transform: scale(1);
+      }
     }
     
     .status.error {
       background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
       color: #721c24;
-      border: 1px solid #f5c6cb;
+      border: 2px solid #dc3545;
+      animation: slideInStatus 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                 shake 0.5s ease-in-out 0.4s;
+    }
+    
+    .status.error::before {
+      content: '❌';
+    }
+    
+    @keyframes shake {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(-10px);
+      }
+      75% {
+        transform: translateX(10px);
+      }
     }
     
     .status.info {
-      background: linear-gradient(135deg, #cce7ff 0%, #99d1ff 100%);
-      color: #004085;
-      border: 1px solid #99d1ff;
+      background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+      color: #0c5460;
+      border: 2px solid #17a2b8;
+      animation: slideInStatus 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                 pulse 2s ease-in-out infinite 2s;
+    }
+    
+    .status.info::before {
+      content: 'ℹ️';
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      50% {
+        box-shadow: 0 4px 20px rgba(23, 162, 184, 0.3);
+      }
+    }
+    
+    .status-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.1);
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      color: inherit;
+      transition: all 0.2s ease;
+      opacity: 0.6;
+    }
+    
+    .status-close:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.2);
+      transform: scale(1.1);
+    }
+    
+    button .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 0.8s linear infinite;
     }
     
     .help-text {
@@ -259,6 +366,16 @@
       color: #666;
       margin-top: 6px;
       line-height: 1.4;
+    }
+    
+    .help-text a {
+      text-decoration: none;
+      font-weight: 600;
+      color: #25D366;
+    }
+    
+    .help-text a:hover {
+      text-decoration: underline;
     }
     
     .loading {
@@ -310,7 +427,7 @@
       align-items: center;
     }
     
-    .instructions ol {
+    .instructions ol, .instructions ul {
       margin: 0;
       padding-left: 20px;
       color: #555;
@@ -379,12 +496,6 @@
       transform: translateY(-2px);
       background: rgba(255, 255, 255, 0.15);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .feature-item .popup-icon-svg {
-      width: 24px;
-      height: 24px;
-      margin-bottom: 6px;
     }
     
     .feature-item .title {
@@ -484,7 +595,6 @@
       animation: spin 1s linear infinite;
     }
     
-    /* Enhanced input group styling */
     .input-group {
       position: relative;
     }
@@ -508,7 +618,6 @@
       color: #25D366;
     }
     
-    /* Responsive design */
     @media (max-width: 480px) {
       body {
         width: 320px;
@@ -534,7 +643,6 @@
       }
     }
     
-    /* Dark mode compatibility */
     @media (prefers-color-scheme: dark) {
       .form-container,
       .instructions,
@@ -543,9 +651,9 @@
       }
     }
     
-    /* Accessibility enhancements */
     button:focus,
-    input:focus {
+    input:focus,
+    select:focus {
       outline: 2px solid #25D366;
       outline-offset: 2px;
     }
@@ -555,7 +663,6 @@
       outline-offset: 2px;
     }
     
-    /* Print styles */
     @media print {
       body {
         background: white;
@@ -585,7 +692,7 @@
       WhatsApp to Odoo
     </h1>
     <p>Advanced Integration Suite</p>
-    <span class="version-badge">v2.0 - Modern Icons Edition</span>
+    <span class="version-badge">v2.0 - AI Edition</span>
     
     <div class="connection-status" id="connectionStatus">
       <div class="status-dot" id="statusDot"></div>
@@ -622,6 +729,7 @@
     </div>
   </div>
 
+  <!-- ODOO CONFIGURATION -->
   <div class="form-container">
     <form id="configForm">
       <div class="form-group">
@@ -701,6 +809,141 @@
     </form>
   </div>
 
+  <!-- AI CONFIGURATION -->
+  <div class="form-container" style="margin-top: 20px;">
+    <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 8px;">
+      <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16v-4"/>
+        <path d="M12 8h.01"/>
+      </svg>
+      AI Configuration
+    </h3>
+    
+    <form id="aiConfigForm">
+      <div class="form-group">
+        <label for="aiProvider">
+          <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          AI Provider
+        </label>
+        <select id="aiProvider">
+          <option value="deepseek">DeepSeek (Recommended - Fast & Affordable)</option>
+          <option value="claude">Claude (Anthropic - Most Accurate)</option>
+          <option value="openai">OpenAI GPT-4 (Premium)</option>
+        </select>
+        <div class="help-text">Choose your preferred AI provider for conversation analysis</div>
+      </div>
+
+      <div class="form-group">
+        <label for="aiApiKey">
+          <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <circle cx="12" cy="5" r="2"/>
+            <path d="M12 7v4l-3 3 3 3 3-3-3-3Z"/>
+          </svg>
+          API Key
+        </label>
+        <div class="input-group">
+          <svg class="input-icon popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <circle cx="12" cy="5" r="2"/>
+            <path d="M12 7v4"/>
+          </svg>
+          <input type="password" id="aiApiKey" placeholder="Enter API Key" autocomplete="off">
+        </div>
+        <div class="help-text" id="aiProviderHelp">
+          Get your DeepSeek API key from: <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button type="button" id="testAiBtn" class="btn-secondary">
+          <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          Test AI
+        </button>
+        <button type="submit" id="saveAiBtn" class="btn-primary">
+          <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17,21 17,13 7,13 7,21"/>
+            <polyline points="7,3 7,8 15,8"/>
+          </svg>
+          Save AI Config
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- AI PROVIDER COMPARISON -->
+  <div class="instructions" style="margin-top: 20px;">
+    <h3>
+      <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16v-4"/>
+        <path d="M12 8h.01"/>
+      </svg>
+      AI Provider Comparison:
+    </h3>
+    
+    <div style="margin-top: 16px;">
+      <div style="background: rgba(37, 211, 102, 0.1); border-left: 4px solid #25D366; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+        <strong style="color: #1ea952; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+          <span>✨</span> DeepSeek (Recommended)
+        </strong>
+        <ul style="margin: 8px 0 0 20px; font-size: 13px; color: #555; line-height: 1.6;">
+          <li><strong>Speed:</strong> Very Fast (~2-3 seconds)</li>
+          <li><strong>Cost:</strong> Most affordable ($0.001/1K tokens)</li>
+          <li><strong>Accuracy:</strong> Excellent for business tasks</li>
+          <li><strong>Best for:</strong> High-volume daily use</li>
+        </ul>
+      </div>
+      
+      <div style="background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+        <strong style="color: #667eea; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+          <span>🎯</span> Claude (Anthropic)
+        </strong>
+        <ul style="margin: 8px 0 0 20px; font-size: 13px; color: #555; line-height: 1.6;">
+          <li><strong>Speed:</strong> Fast (~3-4 seconds)</li>
+          <li><strong>Cost:</strong> Premium ($0.015/1K tokens)</li>
+          <li><strong>Accuracy:</strong> Highest quality analysis</li>
+          <li><strong>Best for:</strong> Complex conversations, nuanced understanding</li>
+        </ul>
+      </div>
+      
+      <div style="background: rgba(0, 122, 255, 0.1); border-left: 4px solid #007AFF; padding: 12px; border-radius: 8px;">
+        <strong style="color: #007AFF; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+          <span>🚀</span> OpenAI GPT-4
+        </strong>
+        <ul style="margin: 8px 0 0 20px; font-size: 13px; color: #555; line-height: 1.6;">
+          <li><strong>Speed:</strong> Medium (~4-5 seconds)</li>
+          <li><strong>Cost:</strong> Most expensive ($0.03/1K tokens)</li>
+          <li><strong>Accuracy:</strong> Very high, well-known</li>
+          <li><strong>Best for:</strong> Organizations already using OpenAI</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div style="background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; padding: 12px; border-radius: 8px; margin-top: 16px;">
+      <strong style="color: #856404; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+        <span>💡</span> Quick Start Guide:
+      </strong>
+      <ol style="margin: 8px 0 0 20px; font-size: 13px; color: #555; line-height: 1.6;">
+        <li>Choose <strong>DeepSeek</strong> for best value and speed</li>
+        <li>Sign up at <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a></li>
+        <li>Create an API key (usually free tier available)</li>
+        <li>Paste the key above and click "Test AI"</li>
+        <li>Start using AI suggestions in WhatsApp!</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STATUS AND LOADING -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
     <span>Testing connection...</span>
@@ -708,6 +951,7 @@
 
   <div id="status" class="status" style="display: none;"></div>
 
+  <!-- ODOO API KEY INFO -->
   <div class="api-key-info">
     <h4>
       <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -715,7 +959,7 @@
         <circle cx="12" cy="5" r="2"/>
         <path d="M12 7v4l-3 3 3 3 3-3-3-3Z"/>
       </svg>
-      How to Get Your API Key:
+      How to Get Your Odoo API Key:
     </h4>
     <ol>
       <li>Log into your Odoo instance</li>
@@ -727,6 +971,7 @@
     </ol>
   </div>
 
+  <!-- INSTRUCTIONS -->
   <div class="instructions">
     <h3>
       <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -735,30 +980,31 @@
       Enhanced Features:
     </h3>
     <ol>
-      <li><strong>Multi-Select Mode:</strong> Select multiple messages for comprehensive tickets/tasks/leads</li>
-      <li><strong>Custom Titles:</strong> Choose from predefined options or write custom titles</li>
+      <li><strong>AI Smart Suggestions:</strong> Get intelligent recommendations for tickets, tasks, or leads</li>
+      <li><strong>Multi-Select Mode:</strong> Select multiple messages for comprehensive analysis</li>
+      <li><strong>Custom Titles:</strong> Choose from AI suggestions or write custom titles</li>
       <li><strong>Smart Detection:</strong> Automatically detects priority and contact information</li>
       <li><strong>All Types Supported:</strong> Create tickets, tasks, and leads with full customization</li>
       <li><strong>Conversation History:</strong> Maintains complete message context in Odoo</li>
-      <li><strong>Modern UI:</strong> Professional icons and smooth animations</li>
     </ol>
     
-    <h3>
+    <h3 style="margin-top: 20px;">
       <svg class="popup-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
       How to Use:
     </h3>
     <ol>
-      <li>Configure your connection above and test it</li>
+      <li>Configure Odoo and AI connections above</li>
       <li>Go to <strong>WhatsApp Web</strong> in a new tab</li>
-      <li>Open any conversation</li>
-      <li><strong>Single Message:</strong> Hover over a message → Click action buttons</li>
-      <li><strong>Multi-Select:</strong> Click "Multi-Select" → Select messages → Create item</li>
-      <li>Choose custom titles and check your Odoo for results!</li>
+      <li>Open any conversation and select messages</li>
+      <li>Click <strong>🤖 AI Smart Suggest</strong> button</li>
+      <li>Review AI recommendations and select one</li>
+      <li>Customize and create in Odoo!</li>
     </ol>
   </div>
 
+  <!-- ONLY ONE SCRIPT TAG - ALL JS IN popup.js -->
   <script src="popup.js"></script>
 </body>
 </html>

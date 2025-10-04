@@ -1,5 +1,6 @@
-// Enhanced popup.js with connection status and improved UX
+// UPDATED popup.js with AIConfigManager integrated
 
+// Enhanced popup.js with connection status and improved UX
 class PopupManager {
   constructor() {
     this.initializeElements();
@@ -60,7 +61,7 @@ class PopupManager {
     clearTimeout(this.autoSaveTimeout);
     this.autoSaveTimeout = setTimeout(() => {
       this.saveConfig();
-    }, 1500); // Increased debounce time
+    }, 1500);
   }
   
   validateForm() {
@@ -100,7 +101,6 @@ class PopupManager {
       if (this.isConfigComplete(config)) {
         this.showStatus('Configuration loaded successfully', 'success');
         
-        // Show last connection status if available
         if (lastTest) {
           const timeSinceTest = Date.now() - lastTest.timestamp;
           const hoursAgo = Math.floor(timeSinceTest / (1000 * 60 * 60));
@@ -135,14 +135,12 @@ class PopupManager {
     }
     
     try {
-      // Add loading state to save button
       this.setSaveButtonLoading(true);
       
       await chrome.storage.local.set({ odooConfig: config });
       this.showStatus('Configuration saved successfully!', 'success');
       console.log('Config saved successfully');
       
-      // Update connection status
       this.updateConnectionStatus('unknown', 'Saved - Test connection');
     } catch (error) {
       this.showStatus('Error saving configuration', 'error');
@@ -160,7 +158,7 @@ class PopupManager {
       this.saveBtn.disabled = true;
     } else {
       this.saveBtn.classList.remove('btn-loading');
-      this.saveBtn.textContent = '💾 Save Config';
+      this.saveBtn.textContent = 'Save Config';
       this.saveBtn.disabled = false;
     }
   }
@@ -172,7 +170,7 @@ class PopupManager {
       this.testBtn.disabled = true;
     } else {
       this.testBtn.classList.remove('btn-loading');
-      this.testBtn.textContent = '🔍 Test Connection';
+      this.testBtn.textContent = 'Test Connection';
       this.testBtn.disabled = false;
     }
   }
@@ -200,7 +198,6 @@ class PopupManager {
       
       console.log('Test response:', response);
       
-      // Store test result with timestamp
       const testResult = {
         success: response.success,
         message: response.message,
@@ -212,7 +209,7 @@ class PopupManager {
       if (response.success) {
         this.showStatus('✅ Connection successful! Ready to create tickets, tasks, and leads.', 'success');
         this.updateConnectionStatus('connected', 'Connected successfully');
-        await this.saveConfig(); // Auto-save on successful test
+        await this.saveConfig();
       } else {
         this.showStatus(`❌ Connection failed: ${response.message}`, 'error');
         this.updateConnectionStatus('error', 'Connection failed');
@@ -266,7 +263,6 @@ class PopupManager {
   updateConnectionStatus(status, message) {
     this.statusText.textContent = message;
     
-    // Remove all status classes
     this.statusDot.classList.remove('connected', 'testing', 'error');
     
     switch (status) {
@@ -283,7 +279,6 @@ class PopupManager {
       case 'disconnected':
       case 'unknown':
       default:
-        // Default red styling is already applied
         break;
     }
   }
@@ -298,7 +293,6 @@ class PopupManager {
     this.status.className = `status ${type}`;
     this.status.style.display = 'block';
     
-    // Auto-hide success messages
     if (type === 'success') {
       setTimeout(() => this.hideStatus(), 4000);
     }
@@ -317,21 +311,303 @@ class PopupManager {
   }
 }
 
-// Enhanced CSS for testing animation
-const additionalStyles = `
-  @keyframes pulse-yellow {
-    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+// ============================================
+// AI CONFIGURATION MANAGER
+// ============================================
+
+class AIConfigManager {
+  constructor() {
+    this.providerSelect = document.getElementById('aiProvider');
+    this.apiKeyInput = document.getElementById('aiApiKey');
+    this.testAiBtn = document.getElementById('testAiBtn');
+    this.saveAiBtn = document.getElementById('saveAiBtn');
+    this.aiConfigForm = document.getElementById('aiConfigForm');
+    this.providerHelp = document.getElementById('aiProviderHelp');
+    
+    this.providerLinks = {
+      deepseek: 'https://platform.deepseek.com',
+      claude: 'https://console.anthropic.com',
+      openai: 'https://platform.openai.com/api-keys'
+    };
+    
+    this.init();
   }
-`;
+  
+  init() {
+    this.loadAIConfig();
+    this.bindEvents();
+  }
+  
+  bindEvents() {
+    this.providerSelect.addEventListener('change', () => {
+      this.updateProviderHelp();
+      // Load the API key for the newly selected provider
+      this.loadProviderApiKey();
+    });
+    
+    this.testAiBtn.addEventListener('click', () => this.testAIConnection());
+    this.aiConfigForm.addEventListener('submit', (e) => this.saveAIConfig(e));
+  }
+  
+  async loadAIConfig() {
+    try {
+      const result = await chrome.storage.local.get(['aiConfig']);
+      const config = result.aiConfig || {};
+      
+      console.log('📋 Loaded AI config:', config);
+      
+      if (config.selectedProvider) {
+        this.providerSelect.value = config.selectedProvider;
+      }
+      
+      // Load API key for current provider
+      await this.loadProviderApiKey();
+      
+      this.updateProviderHelp();
+      
+    } catch (error) {
+      console.error('Error loading AI config:', error);
+    }
+  }
+  
+  async loadProviderApiKey() {
+    try {
+      const result = await chrome.storage.local.get(['aiConfig']);
+      const config = result.aiConfig || {};
+      const provider = this.providerSelect.value;
+      const apiKey = config[`${provider}_api_key`];
+      
+      if (apiKey) {
+        this.apiKeyInput.value = apiKey;
+        console.log(`✅ Loaded API key for ${provider}`);
+      } else {
+        this.apiKeyInput.value = '';
+        console.log(`ℹ️ No API key found for ${provider}`);
+      }
+    } catch (error) {
+      console.error('Error loading provider API key:', error);
+    }
+  }
+  
+  updateProviderHelp() {
+    const provider = this.providerSelect.value;
+    const providerNames = {
+      deepseek: 'DeepSeek',
+      claude: 'Claude (Anthropic)',
+      openai: 'OpenAI'
+    };
+    
+    this.providerHelp.innerHTML = `
+      Get your ${providerNames[provider]} API key from: 
+      <a href="${this.providerLinks[provider]}" target="_blank" style="color: #25D366;">
+        ${this.providerLinks[provider].replace('https://', '')}
+      </a>
+    `;
+  }
+  
+  async saveAIConfig(e) {
+    if (e) e.preventDefault();
+    
+    const provider = this.providerSelect.value;
+    const apiKey = this.apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+      this.showStatus('Please enter an API key', 'error');
+      return;
+    }
+    
+    try {
+      // Load existing config
+      const result = await chrome.storage.local.get(['aiConfig']);
+      const config = result.aiConfig || {};
+      
+      // Update config
+      config.selectedProvider = provider;
+      config[`${provider}_api_key`] = apiKey;
+      
+      // Save to storage
+      await chrome.storage.local.set({ aiConfig: config });
+      
+      console.log(`✅ AI config saved for ${provider}:`, {
+        selectedProvider: config.selectedProvider,
+        hasKey: !!apiKey
+      });
+      
+      this.showStatus(`AI configuration saved for ${provider}!`, 'success');
+      
+    } catch (error) {
+      this.showStatus('Error saving AI configuration', 'error');
+      console.error('Save AI config error:', error);
+    }
+  }
+  
+  async testAIConnection() {
+    const provider = this.providerSelect.value;
+    const apiKey = this.apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+      this.showStatus('Please enter an API key first', 'error');
+      return;
+    }
+    
+    // Disable button and show loading state
+    this.testAiBtn.disabled = true;
+    this.testAiBtn.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></div>
+        <span>Testing ${provider}...</span>
+      </div>
+    `;
+    
+    // Show initial status
+    this.showStatus(`Testing connection to ${provider}...`, 'info');
+    
+    try {
+      // Save config first
+      await this.saveAIConfig();
+      
+      console.log(`Testing AI connection for ${provider}...`);
+      
+      // Add timeout to the test
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000);
+      });
+      
+      const testPromise = chrome.runtime.sendMessage({
+        action: 'testAI',
+        provider: provider
+      });
+      
+      // Race between test and timeout
+      const response = await Promise.race([testPromise, timeoutPromise]);
+      
+      console.log('AI test response:', response);
+      
+      if (response.success) {
+        // SUCCESS - Show detailed success message
+        this.showStatus(
+          `${this.getProviderName(provider)} connected successfully! Ready to use AI suggestions.`,
+          'success'
+        );
+        
+        console.log(`${provider} test successful:`, response);
+        
+      } else {
+        // FAILURE - Show detailed error message
+        const errorMessage = response.message || 'Unknown error';
+        
+        this.showStatus(
+          `${this.getProviderName(provider)} test failed: ${errorMessage}`,
+          'error'
+        );
+        
+        // Show helpful hints based on error type
+        if (errorMessage.includes('401') || errorMessage.includes('Invalid')) {
+          setTimeout(() => {
+            this.showStatus(
+              'Tip: Check if your API key is correct and has not expired',
+              'info'
+            );
+          }, 3000);
+        } else if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+          setTimeout(() => {
+            this.showStatus(
+              'Tip: Your API key may not have the required permissions',
+              'info'
+            );
+          }, 3000);
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+          setTimeout(() => {
+            this.showStatus(
+              'Tip: Check your internet connection and firewall settings',
+              'info'
+            );
+          }, 3000);
+        }
+        
+        console.error(`${provider} test failed:`, response);
+      }
+      
+    } catch (error) {
+      // EXCEPTION - Show error with details
+      const errorMsg = error.message || 'Unknown error occurred';
+      
+      this.showStatus(
+        `Test error: ${errorMsg}`,
+        'error'
+      );
+      
+      console.error('AI test exception:', error);
+      
+      // Show recovery suggestion
+      setTimeout(() => {
+        this.showStatus(
+          'Tip: Try reloading the extension or checking your API key',
+          'info'
+        );
+      }, 3000);
+      
+    } finally {
+      // Reset button state
+      this.testAiBtn.disabled = false;
+      this.testAiBtn.innerHTML = 'Test AI';
+    }
+  }
+  
+  getProviderName(provider) {
+    const names = {
+      deepseek: 'DeepSeek',
+      claude: 'Claude (Anthropic)',
+      openai: 'OpenAI GPT-4'
+    };
+    return names[provider] || provider;
+  }
+  
+  showStatus(message, type) {
+    const status = document.getElementById('status');
+    if (!status) return;
+    
+    // Clear any existing content
+    status.innerHTML = '';
+    
+    // Create message text
+    const messageText = document.createElement('span');
+    messageText.textContent = message;
+    messageText.style.flex = '1';
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'status-close';
+    closeBtn.innerHTML = '×';
+    closeBtn.onclick = () => {
+      status.style.display = 'none';
+    };
+    
+    // Add elements to status
+    status.appendChild(messageText);
+    status.appendChild(closeBtn);
+    
+    // Set class and show
+    status.className = `status ${type}`;
+    status.style.display = 'flex';
+    
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 5000);
+    }
+    // Error and info messages stay visible until manually closed
+  }
+}
 
-// Add additional styles
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
+// ============================================
+// INITIALIZE BOTH MANAGERS
+// ============================================
 
-// Initialize popup when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('🚀 Initializing popup managers...');
   new PopupManager();
+  new AIConfigManager();
+  console.log('✅ Popup initialized');
 });

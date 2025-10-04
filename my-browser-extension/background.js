@@ -697,6 +697,19 @@ async suggestContacts(contactName, contactNumber) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background received message:', message.action);
   
+ if (message.action === 'testAI') {
+    handleTestAI(message.provider)
+      .then(sendResponse)
+      .catch(error => {
+        console.error('Test AI error:', error);
+        sendResponse({
+          success: false,
+          message: error.message || 'Unknown error occurred'
+        });
+      });
+    return true; // Required for async response
+  }
+
   if (message.action === 'createTicket') {
     handleCreateTicket(message.config, message.conversationData)
       .then(sendResponse)
@@ -845,6 +858,168 @@ async function testOdooConnection(config) {
     return {
       success: false,
       message: error.message
+    };
+  }
+}
+
+async function handleTestAI(providerName) {
+  console.log(`Testing AI provider: ${providerName}`);
+  
+  try {
+    // Get AI config from storage
+    const result = await chrome.storage.local.get(['aiConfig']);
+    const config = result.aiConfig || {};
+    
+    const apiKey = config[`${providerName}_api_key`];
+    
+    if (!apiKey) {
+      return {
+        success: false,
+        message: 'API key not found in configuration'
+      };
+    }
+    
+    // Provider configurations
+    const providers = {
+      deepseek: {
+        url: 'https://api.deepseek.com/chat/completions',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: {
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'Respond with exactly: {"status": "ok", "test": "successful"}' }
+          ],
+          max_tokens: 100,
+          temperature: 0
+        },
+        responseParser: (data) => data.choices[0].message.content
+      },
+      
+      claude: {
+        url: 'https://api.anthropic.com/v1/messages',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: {
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 100,
+          messages: [
+            { 
+              role: 'user', 
+              content: 'Respond with exactly: {"status": "ok", "test": "successful"}' 
+            }
+          ]
+        },
+        responseParser: (data) => data.content[0].text
+      },
+      
+      openai: {
+        url: 'https://api.openai.com/v1/chat/completions',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: 'Respond with exactly: {"status": "ok", "test": "successful"}' }
+          ],
+          max_tokens: 100,
+          temperature: 0
+        },
+        responseParser: (data) => data.choices[0].message.content
+      }
+    };
+    
+    const provider = providers[providerName];
+    
+    if (!provider) {
+      return {
+        success: false,
+        message: `Unknown provider: ${providerName}`
+      };
+    }
+    
+    console.log(`Calling ${providerName} API...`);
+    
+    // Make API call
+    const response = await fetch(provider.url, {
+      method: 'POST',
+      headers: provider.headers,
+      body: JSON.stringify(provider.body)
+    });
+    
+    // Get response text first for better error handling
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      let errorMessage = `API Error (${response.status})`;
+      
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error?.message || 
+                      errorData.message || 
+                      errorData.detail ||
+                      response.statusText ||
+                      errorMessage;
+      } catch (e) {
+        // If JSON parse fails, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      console.error(`${providerName} API error:`, errorMessage);
+      
+      return {
+        success: false,
+        message: errorMessage
+      };
+    }
+    
+    // Parse successful response
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      return {
+        success: false,
+        message: 'Invalid JSON response from API'
+      };
+    }
+    
+    const content = provider.responseParser(data);
+    
+    console.log(`${providerName} test successful:`, content);
+    
+    return {
+      success: true,
+      message: `Connection successful! ${providerName} API is working.`,
+      response: content
+    };
+    
+  } catch (error) {
+    console.error(`${providerName} test failed:`, error);
+    
+    // Better error messages for common issues
+    let errorMessage = error.message || 'Unknown error occurred';
+    
+    if (error.message?.includes('Failed to fetch')) {
+      errorMessage = 'Network error - unable to reach API server';
+    } else if (error.message?.includes('NetworkError')) {
+      errorMessage = 'Network error - check your internet connection';
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'Connection timeout - API server not responding';
+    }
+    
+    return {
+      success: false,
+      message: errorMessage
     };
   }
 }
