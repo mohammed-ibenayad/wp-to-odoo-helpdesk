@@ -581,6 +581,7 @@
         data: {
           title: suggestion.title,
           priority: suggestion.priority,
+          reasoning: suggestion.reasoning,
           aiGenerated: true
         }
       });
