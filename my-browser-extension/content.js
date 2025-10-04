@@ -1264,13 +1264,20 @@ async createFromAISuggestion(type, aiData, messages, conversationData) {
   } catch (error) {
     window.NotificationManager.showError(`Error: ${error.message}`);
   } finally {
-    // ✅ ADD THIS BLOCK - Reset button state
+    // Reset button state
+    console.log('🔍 Finally block - resetting button for type:', type);
     const createBtn = document.getElementById(`odoo-create-${type}`);
+    console.log('🔍 Button found:', createBtn);
+    console.log('🔍 Selected messages size:', this.selectedMessages.size);
+    
     if (createBtn) {
       createBtn.disabled = this.selectedMessages.size === 0;
       const icon = this.modernIcons[type];
       const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
       createBtn.innerHTML = `${icon} ${capitalizedType}`;
+      console.log('✅ Button reset to:', createBtn.innerHTML);
+    } else {
+      console.warn('⚠️ Button not found!');
     }
   }
 }
